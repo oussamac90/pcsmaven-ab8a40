@@ -1,0 +1,52 @@
+{
+  "name": "port-community-system-backend",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/core-services",
+    "packages/api-gateway",
+    "packages/document-service",
+    "packages/notification-service",
+    "packages/common"
+  ],
+  "scripts": {
+    "clean": "rimraf */dist */target */*.egg-info",
+    "build": "npm-run-all clean --parallel build:*",
+    "build:core": "cd packages/core-services && npm run build",
+    "build:gateway": "cd packages/api-gateway && npm run build", 
+    "build:doc": "cd packages/document-service && npm run build",
+    "build:notify": "cd packages/notification-service && npm run build",
+    "test": "npm-run-all --parallel test:*",
+    "test:core": "cd packages/core-services && npm test",
+    "test:gateway": "cd packages/api-gateway && npm test",
+    "test:doc": "cd packages/document-service && npm test", 
+    "test:notify": "cd packages/notification-service && npm test",
+    "lint": "npm-run-all --parallel lint:*",
+    "lint:core": "cd packages/core-services && npm run lint",
+    "lint:gateway": "cd packages/api-gateway && npm run lint",
+    "lint:doc": "cd packages/document-service && npm run lint",
+    "lint:notify": "cd packages/notification-service && npm run lint",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "dev": "concurrently \"npm:dev:*\"",
+    "dev:core": "cd packages/core-services && npm run dev",
+    "dev:gateway": "cd packages/api-gateway && npm run dev",
+    "dev:doc": "cd packages/document-service && npm run dev",
+    "dev:notify": "cd packages/notification-service && npm run dev",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "cross-env": "^7.0.3",
+    "dotenv-cli": "^7.2.1",
+    "husky": "^8.0.3",
+    "lint-staged": "^13.2.3",
+    "npm-run-all": "^4.1.5",
+    "rimraf": "^5.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}
