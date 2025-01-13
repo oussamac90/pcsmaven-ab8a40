@@ -1,0 +1,370 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "datasource": "prometheus",
+        "enable": true,
+        "expr": "changes(kube_deployment_status_observed_generation{deployment=\"api-gateway\"}[5m])",
+        "name": "Deployments",
+        "titleFormat": "Deployment",
+        "tagKeys": ["deployment"]
+      },
+      {
+        "datasource": "prometheus",
+        "enable": true,
+        "expr": "changes(incident_created{service=\"api-gateway\"}[5m])",
+        "name": "Incidents",
+        "titleFormat": "Incident",
+        "tagKeys": ["severity"]
+      }
+    ]
+  },
+  "editable": true,
+  "panels": [
+    {
+      "title": "Request Rate",
+      "type": "graph",
+      "datasource": "prometheus",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{job=\"api-gateway\"}[5m])",
+          "legendFormat": "{{method}} {{path}}"
+        }
+      ],
+      "thresholds": [
+        {
+          "value": 1000,
+          "colorMode": "warning",
+          "op": "gt",
+          "fill": true,
+          "line": true
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "reqps",
+          "label": "Requests/sec"
+        }
+      ]
+    },
+    {
+      "title": "Response Time",
+      "type": "graph",
+      "datasource": "prometheus",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"api-gateway\"}[5m]))",
+          "legendFormat": "95th percentile"
+        }
+      ],
+      "thresholds": [
+        {
+          "value": 2,
+          "colorMode": "critical",
+          "op": "gt",
+          "fill": true,
+          "line": true
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "s",
+          "label": "Duration"
+        }
+      ]
+    },
+    {
+      "title": "Error Rate",
+      "type": "graph",
+      "datasource": "prometheus",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{job=\"api-gateway\", status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"api-gateway\"}[5m])) * 100",
+          "legendFormat": "Error percentage"
+        }
+      ],
+      "thresholds": [
+        {
+          "value": 0.1,
+          "colorMode": "critical",
+          "op": "gt",
+          "fill": true,
+          "line": true
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "percent",
+          "label": "Error Rate"
+        }
+      ]
+    },
+    {
+      "title": "Authentication Metrics",
+      "type": "graph",
+      "datasource": "prometheus",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "targets": [
+        {
+          "expr": "rate(auth_failures_total{job=\"api-gateway\"}[5m])",
+          "legendFormat": "Auth failures"
+        },
+        {
+          "expr": "rate(auth_success_total{job=\"api-gateway\"}[5m])",
+          "legendFormat": "Auth successes"
+        },
+        {
+          "expr": "rate(token_validation_failures_total{job=\"api-gateway\"}[5m])",
+          "legendFormat": "Token validation failures"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "short",
+          "label": "Count/sec"
+        }
+      ]
+    },
+    {
+      "title": "WAF Metrics",
+      "type": "graph",
+      "datasource": "prometheus",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "targets": [
+        {
+          "expr": "rate(waf_blocked_requests_total{job=\"api-gateway\"}[5m])",
+          "legendFormat": "Blocked requests"
+        },
+        {
+          "expr": "rate(waf_detected_attacks_total{job=\"api-gateway\"}[5m])",
+          "legendFormat": "Detected attacks"
+        }
+      ],
+      "thresholds": [
+        {
+          "value": 10,
+          "colorMode": "critical",
+          "op": "gt",
+          "fill": true,
+          "line": true
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "short",
+          "label": "Count/sec"
+        }
+      ]
+    },
+    {
+      "title": "Circuit Breaker Status",
+      "type": "stat",
+      "datasource": "prometheus",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 16
+      },
+      "targets": [
+        {
+          "expr": "circuit_breaker_state{job=\"api-gateway\"}",
+          "legendFormat": "{{service}}"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      },
+      "mappings": [
+        {
+          "type": "value",
+          "options": {
+            "0": {
+              "text": "Closed",
+              "color": "green"
+            },
+            "1": {
+              "text": "Open",
+              "color": "red"
+            },
+            "2": {
+              "text": "Half-Open",
+              "color": "yellow"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "title": "Cache Performance",
+      "type": "graph",
+      "datasource": "prometheus",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "targets": [
+        {
+          "expr": "rate(cache_hits_total{job=\"api-gateway\"}[5m])",
+          "legendFormat": "Cache hits"
+        },
+        {
+          "expr": "rate(cache_misses_total{job=\"api-gateway\"}[5m])",
+          "legendFormat": "Cache misses"
+        }
+      ],
+      "yaxes": [
+        {
+          "format": "short",
+          "label": "Count/sec"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": [
+    "api-gateway",
+    "monitoring",
+    "security"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "browser",
+  "title": "API Gateway Monitoring",
+  "uid": "api-gateway-metrics",
+  "version": 1,
+  "alerting": {
+    "list": [
+      {
+        "name": "High Latency",
+        "conditions": [
+          {
+            "type": "query",
+            "query": {
+              "params": [
+                "A",
+                "5m",
+                "now"
+              ]
+            },
+            "reducer": {
+              "type": "avg",
+              "params": []
+            },
+            "evaluator": {
+              "type": "gt",
+              "params": [2]
+            }
+          }
+        ],
+        "notifications": [
+          {
+            "uid": "slack-notifications",
+            "name": "Slack Alerts",
+            "type": "slack"
+          },
+          {
+            "uid": "pagerduty-critical",
+            "name": "PagerDuty Critical",
+            "type": "pagerduty"
+          }
+        ]
+      },
+      {
+        "name": "Availability Alert",
+        "conditions": [
+          {
+            "type": "query",
+            "query": {
+              "params": [
+                "A",
+                "5m",
+                "now"
+              ]
+            },
+            "reducer": {
+              "type": "avg",
+              "params": []
+            },
+            "evaluator": {
+              "type": "gt",
+              "params": [0.1]
+            }
+          }
+        ],
+        "notifications": [
+          {
+            "uid": "slack-notifications",
+            "name": "Slack Alerts",
+            "type": "slack"
+          },
+          {
+            "uid": "pagerduty-critical",
+            "name": "PagerDuty Critical",
+            "type": "pagerduty"
+          }
+        ]
+      }
+    ]
+  }
+}
