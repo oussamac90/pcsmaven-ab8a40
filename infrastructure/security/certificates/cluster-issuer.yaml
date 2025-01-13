@@ -1,0 +1,74 @@
+# cert-manager version: 1.12.0
+# Purpose: Automated TLS certificate management for Port Community System
+# Provides both staging and production certificate issuers using Let's Encrypt
+
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+  annotations:
+    cert-manager.io/issue-temporary-certificate: "true"
+    monitoring.portcommunitysystem.com/enable: "true"
+spec:
+  acme:
+    # Let's Encrypt staging environment for testing
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@portcommunitysystem.com
+    privateKeySecretRef:
+      name: letsencrypt-staging-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+            podTemplate:
+              spec:
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 1001
+                resources:
+                  limits:
+                    cpu: 100m
+                    memory: 128Mi
+                  requests:
+                    cpu: 50m
+                    memory: 64Mi
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  annotations:
+    cert-manager.io/issue-temporary-certificate: "true"
+    monitoring.portcommunitysystem.com/enable: "true"
+    security.portcommunitysystem.com/audit-logging: "true"
+spec:
+  acme:
+    # Let's Encrypt production environment for live certificates
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@portcommunitysystem.com
+    privateKeySecretRef:
+      name: letsencrypt-prod-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+            podTemplate:
+              spec:
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 1001
+                  fsGroup: 1001
+                  seccompProfile:
+                    type: RuntimeDefault
+                resources:
+                  limits:
+                    cpu: 200m
+                    memory: 256Mi
+                  requests:
+                    cpu: 100m
+                    memory: 128Mi
+                tolerations:
+                  - key: "security"
+                    operator: "Equal"
+                    value: "high"
+                    effect: "NoSchedule"
