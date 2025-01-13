@@ -1,0 +1,163 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-west-2
+  DOCKER_REGISTRY: harbor.pcs.com
+  DEPLOYMENT_TIMEOUT: "600"
+  HEALTH_CHECK_RETRIES: "30"
+  ROLLBACK_THRESHOLD: "1"
+  HELM_VERSION: "3.11.2"
+  KUBECTL_VERSION: "1.26.0"
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment:
+      name: staging
+      url: https://staging.pcs.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VERSION }}
+          
+      - name: Setup kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > kubeconfig
+          
+      - name: Login to Harbor Registry
+        run: |
+          echo "${{ secrets.HARBOR_PASSWORD }}" | docker login ${{ env.DOCKER_REGISTRY }} -u ${{ secrets.HARBOR_USERNAME }} --password-stdin
+          
+      - name: Deploy to Staging
+        run: |
+          export KUBECONFIG=./kubeconfig
+          helm upgrade --install pcs-staging ./helm/pcs \
+            --namespace staging \
+            --set environment=staging \
+            --set image.tag=${GITHUB_SHA} \
+            --wait --timeout ${DEPLOYMENT_TIMEOUT}s
+          
+      - name: Run Health Checks
+        run: |
+          for i in $(seq 1 ${HEALTH_CHECK_RETRIES}); do
+            if kubectl get pods -n staging -l app=pcs --field-selector status.phase=Running | grep -q "1/1"; then
+              echo "Health check passed"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Health check failed"
+          exit 1
+          
+      - name: Verify Security Compliance
+        run: |
+          kubectl exec -n staging deploy/pcs-api-gateway -- trivy image $DOCKER_REGISTRY/pcs/api-gateway:${GITHUB_SHA} --severity HIGH,CRITICAL
+          kubectl exec -n staging deploy/pcs-core-service -- trivy image $DOCKER_REGISTRY/pcs/core-service:${GITHUB_SHA} --severity HIGH,CRITICAL
+
+      - name: Monitor Deployment Metrics
+        run: |
+          kubectl apply -f monitoring/prometheus-rules.yaml
+          kubectl wait --for=condition=available --timeout=300s deployment/prometheus-operator -n monitoring
+
+  deploy-production:
+    name: Deploy to Production
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://pcs.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Setup Helm and kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > kubeconfig
+          
+      - name: Deploy Green Environment
+        run: |
+          export KUBECONFIG=./kubeconfig
+          helm upgrade --install pcs-green ./helm/pcs \
+            --namespace production \
+            --set environment=production \
+            --set deployment.color=green \
+            --set image.tag=${GITHUB_SHA} \
+            --wait --timeout ${DEPLOYMENT_TIMEOUT}s
+          
+      - name: Verify Green Deployment
+        run: |
+          kubectl -n production wait --for=condition=available --timeout=300s deployment/pcs-api-gateway-green
+          kubectl -n production wait --for=condition=available --timeout=300s deployment/pcs-core-service-green
+          
+      - name: Run Security Scans
+        run: |
+          kubectl exec -n production deploy/pcs-api-gateway-green -- trivy image $DOCKER_REGISTRY/pcs/api-gateway:${GITHUB_SHA} --severity HIGH,CRITICAL
+          kubectl exec -n production deploy/pcs-core-service-green -- trivy image $DOCKER_REGISTRY/pcs/core-service:${GITHUB_SHA} --severity HIGH,CRITICAL
+          
+      - name: Switch Traffic to Green
+        run: |
+          kubectl patch service pcs-frontend -n production -p '{"spec":{"selector":{"deployment":"green"}}}'
+          kubectl patch service pcs-api-gateway -n production -p '{"spec":{"selector":{"deployment":"green"}}}'
+          
+      - name: Monitor for Rollback Triggers
+        run: |
+          ./scripts/monitor-deployment.sh \
+            --namespace production \
+            --deployment green \
+            --threshold ${{ env.ROLLBACK_THRESHOLD }} \
+            --duration 300
+            
+      - name: Cleanup Blue Deployment
+        if: success()
+        run: |
+          helm uninstall pcs-blue -n production || true
+          
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          kubectl patch service pcs-frontend -n production -p '{"spec":{"selector":{"deployment":"blue"}}}'
+          kubectl patch service pcs-api-gateway -n production -p '{"spec":{"selector":{"deployment":"blue"}}}'
+          helm uninstall pcs-green -n production
+
+permissions:
+  contents: read
+  id-token: write
+  deployments: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
