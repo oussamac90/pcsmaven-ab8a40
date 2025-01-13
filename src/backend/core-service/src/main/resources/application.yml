@@ -1,0 +1,160 @@
+spring:
+  application:
+    name: pcs-core-service
+  
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:pcs_core}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1200000
+      pool-name: PCSHikariPool
+      validation-timeout: 5000
+      leak-detection-threshold: 60000
+      register-mbeans: true
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+      dialect: org.hibernate.dialect.PostgreSQLDialect
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    properties:
+      hibernate.jdbc.batch_size: 50
+      hibernate.jdbc.fetch_size: 100
+      hibernate.generate_statistics: true
+      hibernate.cache.use_second_level_cache: true
+      hibernate.cache.region.factory_class: org.hibernate.cache.redis.hibernate.RedisRegionFactory
+      hibernate.cache.use_query_cache: true
+      hibernate.order_inserts: true
+      hibernate.order_updates: true
+    show-sql: false
+    open-in-view: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI}
+          jwk-set-uri: ${JWT_JWK_SET_URI}
+          audiences: 
+            - pcs-api
+          jws-algorithms:
+            - RS256
+      client:
+        registration:
+          auth-server:
+            client-id: ${OAUTH_CLIENT_ID}
+            client-secret: ${OAUTH_CLIENT_SECRET}
+            scope:
+              - openid
+              - profile
+              - email
+    jwt:
+      secret: ${JWT_SECRET}
+      expiration: 86400000
+      refresh-token:
+        expiration: 604800000
+      header: Authorization
+      prefix: "Bearer "
+    cors:
+      allowed-origins:
+        - https://*.pcs-domain.com
+      allowed-methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      allowed-headers:
+        - "*"
+      max-age: 3600
+
+  cache:
+    type: redis
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      timeout: 2000
+      ssl: true
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+          max-wait: 1000
+
+server:
+  port: 8080
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/plain,text/css,application/javascript
+    min-response-size: 1024
+  tomcat:
+    max-threads: 200
+    min-spare-threads: 10
+    max-connections: 8192
+    accept-count: 100
+    max-swallow-size: 2MB
+    max-http-form-post-size: 2MB
+    connection-timeout: 5s
+  ssl:
+    enabled: true
+    key-store: classpath:keystore.p12
+    key-store-password: ${SSL_KEYSTORE_PASSWORD}
+    key-store-type: PKCS12
+    key-alias: pcs-ssl
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info,env,loggers
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when_authorized
+      roles:
+        - ACTUATOR_ADMIN
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+        step: 1m
+    distribution:
+      percentiles-histogram: true
+      sla:
+        - 10ms
+        - 100ms
+    tags:
+      application: pcs-core-service
+
+logging:
+  level:
+    root: INFO
+    com.pcs.core: DEBUG
+    org.springframework: INFO
+    org.hibernate: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/core-service.log
+    max-size: 10MB
+    max-history: 10
+    total-size-cap: 1GB
+  logstash:
+    enabled: true
+    host: ${LOGSTASH_HOST:localhost}
+    port: ${LOGSTASH_PORT:5000}
