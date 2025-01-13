@@ -1,0 +1,121 @@
+apiVersion: v2
+name: port-community-system
+version: 1.0.0
+description: Enterprise-grade Port Community System for streamlined port operations, document management, and stakeholder collaboration
+type: application
+kubeVersion: ">=1.26.0"
+
+keywords:
+  - port-community-system
+  - maritime
+  - logistics
+  - container-management
+  - document-processing
+  - real-time-tracking
+  - port-operations
+  - edifact
+  - security
+
+maintainers:
+  - name: PCS Platform Team
+    email: platform@pcs.com
+  - name: PCS DevOps Team
+    email: devops@pcs.com
+
+# Core application dependencies
+dependencies:
+  # Internal service charts
+  - name: api-gateway
+    version: 1.0.0
+    repository: file://api-gateway
+    condition: api-gateway.enabled
+    tags:
+      - core
+      - routing
+
+  - name: core-service
+    version: 1.0.0
+    repository: file://core-service
+    condition: core-service.enabled
+    tags:
+      - core
+      - business-logic
+
+  - name: document-service
+    version: 1.0.0
+    repository: file://document-service
+    condition: document-service.enabled
+    tags:
+      - core
+      - documents
+
+  - name: notification-service
+    version: 1.0.0
+    repository: file://notification-service
+    condition: notification-service.enabled
+    tags:
+      - core
+      - notifications
+
+  - name: web
+    version: 1.0.0
+    repository: file://web
+    condition: web.enabled
+    tags:
+      - core
+      - frontend
+
+  # Infrastructure dependencies
+  - name: ingress-nginx
+    version: 4.7.1
+    repository: https://kubernetes.github.io/ingress-nginx
+    condition: ingress.enabled
+    tags:
+      - infrastructure
+      - networking
+
+  - name: prometheus
+    version: 19.7.2
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: monitoring.enabled
+    tags:
+      - infrastructure
+      - monitoring
+
+  - name: cert-manager
+    version: 1.11.1
+    repository: https://charts.jetstack.io
+    condition: security.certManager.enabled
+    tags:
+      - infrastructure
+      - security
+
+  - name: redis
+    version: 17.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: cache.enabled
+    tags:
+      - infrastructure
+      - caching
+
+annotations:
+  # System requirements and specifications
+  system.availability: "99.9%"
+  system.responseTime: "<2s"
+  system.concurrent.users: "1000+"
+  
+  # Security annotations
+  security.compliance: "ISO27001, GDPR, PCI-DSS"
+  security.encryption: "AES-256"
+  security.authentication: "OAuth2.0, mTLS"
+  
+  # Deployment annotations
+  deployment.strategy: "Blue/Green"
+  deployment.scaling: "Horizontal Pod Autoscaling"
+  deployment.monitoring: "Prometheus/Grafana Stack"
+  
+  # Documentation and support
+  artifacthub.io/license: "Apache-2.0"
+  artifacthub.io/containsSecurityUpdates: "true"
+  artifacthub.io/prerelease: "false"
+  artifacthub.io/recommendations: "Deploy with recommended security settings enabled"
