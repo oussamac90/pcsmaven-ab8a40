@@ -1,0 +1,46 @@
+<svg 
+  viewBox="0 0 24 24" 
+  fill="currentColor" 
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-label="Vessel icon"
+  aria-hidden="false"
+>
+  <!-- Hull base -->
+  <path 
+    d="M2 17L4.338 12.377C4.44787 12.1343 4.64426 11.9375 4.88688 11.8164C5.12951 11.6953 5.40473 11.6563 5.672 11.705L19 13.5V17H2Z"
+    fill="currentColor"
+  />
+  
+  <!-- Ship superstructure -->
+  <path 
+    d="M13 7C13 6.44772 13.4477 6 14 6H17C17.5523 6 18 6.44772 18 7V13.5H13V7Z"
+    fill="currentColor"
+  />
+  
+  <!-- Bow section -->
+  <path 
+    d="M19 13.5V11.5C19 10.9477 19.4477 10.5 20 10.5H21C21.5523 10.5 22 10.9477 22 11.5V13.5H19Z"
+    fill="currentColor"
+  />
+  
+  <!-- Waterline effect -->
+  <path 
+    d="M2 17H22C22 18.6569 20.6569 20 19 20H5C3.34315 20 2 18.6569 2 17Z"
+    fillOpacity="0.85"
+    fill="currentColor"
+  />
+  
+  <!-- Bridge details -->
+  <path 
+    d="M14 8H17V9H14V8Z M14 10H17V11H14V10Z"
+    fillOpacity="0.75"
+    fill="currentColor"
+  />
+  
+  <!-- Smokestack -->
+  <path 
+    d="M15 4C15 3.44772 15.4477 3 16 3H17C17.5523 3 18 3.44772 18 4V6H15V4Z"
+    fill="currentColor"
+  />
+</svg>
