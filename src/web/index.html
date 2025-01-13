@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#003366">
+    <meta name="description" content="Port Community System - Digital platform for streamlined port operations">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- Open Graph tags -->
+    <meta property="og:title" content="Port Community System">
+    <meta property="og:description" content="Digital platform for streamlined port operations">
+    <meta property="og:image" content="/src/assets/images/og-image.png">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+
+    <!-- Security Headers -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.portcommunitysystem.com;">
+    
+    <title>Port Community System</title>
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/svg+xml" href="/src/assets/images/logo.svg">
+    <link rel="apple-touch-icon" href="/src/assets/images/apple-touch-icon.png">
+
+    <!-- Preload Critical Resources -->
+    <link rel="preload" href="/src/assets/fonts/inter/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin="anonymous">
+    <link rel="preconnect" href="https://api.portcommunitysystem.com">
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Critical CSS -->
+    <style>
+        @font-face {
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+            src: url('/src/assets/fonts/inter/Inter-Regular.woff2') format('woff2');
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #F5F7F9;
+            color: #1A1A1A;
+        }
+
+        #root {
+            min-height: 100vh;
+        }
+
+        #loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #003366;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .loading-logo {
+            width: 120px;
+            height: auto;
+            margin-bottom: 1rem;
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            .loading-logo {
+                animation: pulse 1.5s ease-in-out infinite;
+            }
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        .noscript-message {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+            background-color: #003366;
+            color: white;
+            text-align: center;
+            font-size: 1.2rem;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+        }
+    </style>
+</head>
+<body>
+    <noscript>
+        <div class="noscript-message">
+            JavaScript is required to run this application. Please enable JavaScript in your browser settings.
+        </div>
+    </noscript>
+
+    <div id="root" role="main">
+        <div id="loading" aria-label="Loading application">
+            <div>
+                <img src="/src/assets/images/logo.svg" alt="Port Community System" class="loading-logo">
+                <p>Loading Port Community System...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Entry Point -->
+    <script type="module" src="/src/main.tsx" defer></script>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .catch(error => console.error('Service worker registration failed:', error));
+            });
+        }
+    </script>
+</body>
+</html>
