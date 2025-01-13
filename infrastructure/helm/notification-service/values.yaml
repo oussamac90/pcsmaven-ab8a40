@@ -1,0 +1,108 @@
+# Default values for notification-service Helm chart
+# This is a YAML-formatted file.
+
+# Number of replicas to run (minimum 2 for high availability)
+replicaCount: 2
+
+# Container image configuration
+image:
+  # Docker image repository
+  repository: pcs/notification-service
+  # Image tag (using node:18-alpine as base)
+  tag: latest
+  # Image pull policy
+  pullPolicy: IfNotPresent
+
+# Override names
+nameOverride: ""
+fullnameOverride: ""
+
+# Service configuration for network exposure
+service:
+  # Service type (internal cluster access)
+  type: ClusterIP
+  # REST API port
+  port: 3000
+  # WebSocket port for real-time communications
+  socketPort: 3001
+
+# Container resource limits and requests
+resources:
+  # Maximum resource limits
+  limits:
+    cpu: "1"
+    memory: 2Gi
+  # Minimum resource requests
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+# Environment variables
+env:
+  NODE_ENV: production
+  LOG_LEVEL: info
+  SOCKET_PORT: "3001"
+  API_PORT: "3000"
+
+# Socket.io configuration
+socketio:
+  # Connection timeout settings
+  pingTimeout: 5000
+  pingInterval: 10000
+  # Maximum HTTP buffer size (1MB)
+  maxHttpBufferSize: "1e6"
+  # Allowed transport methods
+  transports:
+    - websocket
+    - polling
+  # CORS configuration
+  cors:
+    origin: "*"
+    methods:
+      - GET
+      - POST
+
+# RabbitMQ configuration for event processing
+rabbitmq:
+  # RabbitMQ connection settings
+  host: rabbitmq-service
+  port: 5672
+  username: user
+  password: ""
+  vhost: "/"
+  # Queue configurations
+  queues:
+    notifications: pcs.notifications
+    deadLetter: pcs.notifications.dlq
+  # Exchange configurations
+  exchanges:
+    notifications: pcs.notifications.exchange
+
+# Horizontal Pod Autoscaling configuration
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# Node selector for pod scheduling
+nodeSelector: {}
+
+# Pod tolerations
+tolerations: []
+
+# Pod affinity rules
+affinity:
+  # Prefer pods to be scheduled on different nodes
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - notification-service
+          topologyKey: kubernetes.io/hostname
