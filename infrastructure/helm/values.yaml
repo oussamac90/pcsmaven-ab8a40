@@ -1,0 +1,178 @@
+# Global Helm values configuration for Port Community System
+# Kubernetes v1.26+ compatible
+
+# Global configuration values shared across all services
+global:
+  environment: production
+  imageRegistry: harbor.pcs.local
+  imagePullPolicy: IfNotPresent
+  storageClass: aws-ebs-gp3
+  domain: pcs.local
+  
+  # Default pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 2000
+  
+  # Default container security context
+  containerSecurityContext:
+    capabilities:
+      drop: ["ALL"]
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+
+# Monitoring configuration using Prometheus Operator
+monitoring:
+  enabled: true
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: "15s"
+    alertmanager:
+      enabled: true
+      config:
+        global:
+          resolve_timeout: "5m"
+        route:
+          group_wait: "30s"
+          group_interval: "5m"
+          repeat_interval: "12h"
+          receiver: "default"
+          routes:
+            - match:
+                severity: critical
+              receiver: "pagerduty"
+              group_wait: "0s"
+              repeat_interval: "1h"
+    rules:
+      - name: "high-cpu-usage"
+        rules:
+          - alert: HighCPUUsage
+            expr: avg(rate(container_cpu_usage_seconds_total[5m])) > 0.8
+            for: 5m
+            labels:
+              severity: warning
+          - alert: SystemDown
+            expr: up == 0
+            for: 5m
+            labels:
+              severity: critical
+  grafana:
+    enabled: true
+    persistence:
+      enabled: true
+      size: "10Gi"
+    dashboards:
+      default:
+        kubernetes-cluster:
+          gnetId: 315
+          revision: 2
+        node-exporter:
+          gnetId: 1860
+          revision: 23
+
+# Security configuration
+security:
+  certManager:
+    enabled: true
+    clusterIssuer:
+      name: letsencrypt-prod
+      email: admin@pcs.local
+      server: https://acme-v02.api.letsencrypt.org/directory
+  
+  networkPolicies:
+    enabled: true
+    defaultDenyIngress: true
+    defaultDenyEgress: true
+    allowedNamespaces:
+      - kube-system
+      - monitoring
+      - ingress-nginx
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+  tls:
+    enabled: true
+    secretName: pcs-tls-secret
+
+# Persistence configuration
+persistence:
+  storageClass: aws-ebs-gp3
+  accessModes: ["ReadWriteOnce"]
+  backup:
+    enabled: true
+    schedule: "0 1 * * *"
+    retention:
+      hourly: 24
+      daily: 7
+      weekly: 4
+      monthly: 12
+
+# API Gateway configuration
+api-gateway:
+  replicaCount: 3
+  resources:
+    limits:
+      cpu: "1"
+      memory: "2Gi"
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+
+# Core Service configuration
+core-service:
+  replicaCount: 3
+  resources:
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 8
+
+# Document Service configuration
+document-service:
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: "1"
+      memory: "2Gi"
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+  mongodb:
+    enabled: true
+    persistence:
+      size: "20Gi"
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+
+# External dependencies versions
+dependencies:
+  prometheus-operator:
+    version: "45.x.x"
+    repository: prometheus-community/kube-prometheus-stack
+  cert-manager:
+    version: "1.11.x"
+    repository: jetstack/cert-manager
+  ingress-nginx:
+    version: "4.7.x"
+    repository: ingress-nginx/ingress-nginx
