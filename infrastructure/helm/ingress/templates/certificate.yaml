@@ -1,0 +1,59 @@
+{{- if .Values.tls.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Release.Name }}-cert
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+spec:
+  # Secret where the TLS certificate will be stored
+  secretName: {{ .Values.tls.secretName }}
+  
+  # Reference to the cluster issuer (e.g. Let's Encrypt)
+  issuerRef:
+    name: {{ .Values.tls.clusterIssuer }}
+    kind: ClusterIssuer
+    group: cert-manager.io
+
+  # Domain names for which the certificate will be valid
+  dnsNames:
+  {{- range .Values.tls.hosts }}
+    - {{ . | quote }}
+  {{- end }}
+
+  # Certificate validity duration (90 days)
+  duration: 2160h
+  
+  # Trigger renewal 15 days before expiry
+  renewBefore: 360h
+
+  # Enhanced private key configuration
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+    rotationPolicy: Always
+
+  # Additional security parameters
+  usages:
+    - server auth
+    - client auth
+  
+  keystores:
+    pkcs12:
+      create: true
+      passwordSecretRef:
+        name: {{ .Values.tls.privateKeySecretRef.name }}
+        key: password
+
+  # Additional certificate options
+  options:
+    isCA: false
+    usages:
+      - digital signature
+      - key encipherment
+{{- end }}
