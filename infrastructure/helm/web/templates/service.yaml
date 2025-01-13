@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: {{ include "web.fullname" . }}
+  labels:
+    {{- include "web.labels" . | nindent 4 }}
+  annotations:
+    # Prometheus monitoring annotations
+    prometheus.io/scrape: "{{ .Values.service.monitoring.enabled | default "true" }}"
+    prometheus.io/port: "{{ .Values.service.monitoring.port | default "80" }}"
+    prometheus.io/path: "{{ .Values.service.monitoring.path | default "/metrics" }}"
+    
+    # Load balancer annotations for AWS
+    service.beta.kubernetes.io/aws-load-balancer-type: "{{ .Values.service.loadBalancer.type | default "nlb" }}"
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    service.beta.kubernetes.io/aws-load-balancer-connection-draining-enabled: "{{ .Values.service.loadBalancer.connectionDraining.enabled | default "true" }}"
+    service.beta.kubernetes.io/aws-load-balancer-connection-draining-timeout: "{{ .Values.service.loadBalancer.connectionDraining.timeout | default "300" }}"
+    service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "{{ .Values.service.loadBalancer.idleTimeout | default "60" }}"
+    
+    # Additional performance optimizations
+    service.beta.kubernetes.io/aws-load-balancer-proxy-protocol: "*"
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "http"
+    service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "https"
+    service.beta.kubernetes.io/aws-load-balancer-ssl-cert: "{{ .Values.service.loadBalancer.sslCert | default "" }}"
+
+spec:
+  type: {{ .Values.service.type }}
+  
+  # Session affinity configuration for consistent routing
+  sessionAffinity: {{ .Values.service.sessionAffinity.type | default "ClientIP" }}
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: {{ .Values.service.sessionAffinity.timeout | default 10800 }}
+  
+  # Port configurations
+  ports:
+    # Main application port
+    - port: {{ .Values.service.port | default 80 }}
+      targetPort: {{ .Values.service.targetPort | default 80 }}
+      protocol: TCP
+      name: http
+      {{- if eq .Values.service.type "NodePort" }}
+      nodePort: {{ .Values.service.nodePort | default 30080 }}
+      {{- end }}
+    
+    # Metrics port for Prometheus
+    - port: {{ .Values.service.monitoring.port | default 9090 }}
+      targetPort: {{ .Values.service.monitoring.targetPort | default 9090 }}
+      protocol: TCP
+      name: metrics
+    
+    # Health check port
+    - port: {{ .Values.service.healthCheck.port | default 8081 }}
+      targetPort: {{ .Values.service.healthCheck.targetPort | default 8081 }}
+      protocol: TCP
+      name: health
+  
+  # Selector for pod targeting
+  selector:
+    {{- include "web.selectorLabels" . | nindent 4 }}
+  
+  # External traffic policy for preserving client IP
+  externalTrafficPolicy: {{ .Values.service.externalTrafficPolicy | default "Local" }}
+  
+  # Health check configuration
+  healthCheckNodePort: {{ .Values.service.healthCheck.nodePort | default 30081 }}
+  
+  # Additional service configurations
+  publishNotReadyAddresses: false
+  
+  # IP family policy for dual-stack support
+  ipFamilyPolicy: {{ .Values.service.ipFamilyPolicy | default "SingleStack" }}
+  ipFamilies:
+    - IPv4
+    {{- if eq .Values.service.ipFamilyPolicy "RequireDualStack" }}
+    - IPv6
+    {{- end }}
