@@ -1,0 +1,70 @@
+# Kubernetes NetworkPolicy v1.26
+# Implements zero-trust networking principles and ISO 27001 compliant network segmentation
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-gateway-network-policy
+  namespace: pcs
+  labels:
+    app: pcs
+    component: api-gateway
+    security-tier: dmz
+spec:
+  # Target API Gateway pods specifically
+  podSelector:
+    matchLabels:
+      app: pcs
+      component: api-gateway
+  
+  # Enable both ingress and egress policies for complete network control
+  policyTypes:
+    - Ingress
+    - Egress
+
+  # Ingress rules
+  ingress:
+    # Allow external HTTP traffic while blocking private networks
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            # Block access from private networks for security
+            except:
+              - 10.0.0.0/8     # Private network range
+              - 172.16.0.0/12  # Private network range
+              - 192.168.0.0/16 # Private network range
+      ports:
+        - protocol: TCP
+        - port: 3000  # API Gateway service port
+
+    # Allow Prometheus metrics scraping from monitoring namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9090  # Prometheus metrics port
+
+  # Egress rules
+  egress:
+    # Allow communication to core service pods
+    - to:
+        - podSelector:
+            matchLabels:
+              app: pcs
+              component: core-service
+      ports:
+        - protocol: TCP
+          port: 8080  # Core service port
+
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53  # DNS port
