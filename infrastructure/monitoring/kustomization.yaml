@@ -1,0 +1,155 @@
+# Kustomize Configuration v1beta1
+# Port Community System Monitoring Stack Configuration
+# Version: kustomize v5.0.0
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Target namespace for all monitoring components
+namespace: monitoring
+
+# Common labels for all resources
+commonLabels:
+  app.kubernetes.io/part-of: pcs-monitoring
+  app.kubernetes.io/managed-by: kustomize
+
+# Core monitoring stack resources
+resources:
+  # Metrics monitoring
+  - prometheus/prometheus.yaml
+  - alertmanager/alertmanager.yaml
+  - grafana/grafana.yaml
+  # Log aggregation
+  - loki/loki.yaml
+  - promtail/promtail.yaml
+  # Distributed tracing
+  - jaeger/jaeger.yaml
+  - tempo/tempo.yaml
+
+# ConfigMap generators for component configurations
+configMapGenerator:
+  # Prometheus configuration
+  - name: prometheus-config
+    files:
+      - prometheus/prometheus.yaml
+      - prometheus/rules/alerts.yaml
+      - prometheus/rules/recording.yaml
+    behavior: merge
+
+  # AlertManager configuration
+  - name: alertmanager-config
+    files:
+      - alertmanager/alertmanager.yaml
+      - alertmanager/templates/email.tmpl
+      - alertmanager/templates/slack.tmpl
+    behavior: merge
+
+  # Grafana dashboards
+  - name: grafana-dashboards
+    files:
+      # Application dashboards
+      - grafana/dashboards/api-gateway.json
+      - grafana/dashboards/core-service.json
+      - grafana/dashboards/document-service.json
+      - grafana/dashboards/notification-service.json
+      - grafana/dashboards/web.json
+      # Infrastructure dashboards
+      - grafana/dashboards/kubernetes.json
+      - grafana/dashboards/security.json
+      - grafana/dashboards/tracing.json
+    behavior: create
+
+  # Loki configuration
+  - name: loki-config
+    files:
+      - loki/loki.yaml
+      - loki/rules/security.yaml
+    behavior: merge
+
+  # Promtail configuration
+  - name: promtail-config
+    files:
+      - promtail/promtail.yaml
+      - promtail/scrape-configs.yaml
+    behavior: merge
+
+  # Jaeger configuration
+  - name: jaeger-config
+    files:
+      - jaeger/jaeger.yaml
+      - jaeger/sampling.yaml
+    behavior: merge
+
+  # Tempo configuration
+  - name: tempo-config
+    files:
+      - tempo/tempo.yaml
+      - tempo/storage.yaml
+    behavior: merge
+
+# Resource patches for fine-tuning deployments
+patches:
+  # Prometheus resource allocation
+  - path: patches/prometheus-resources.yaml
+    target:
+      kind: Deployment
+      name: prometheus
+
+  # AlertManager resource allocation
+  - path: patches/alertmanager-resources.yaml
+    target:
+      kind: Deployment
+      name: alertmanager
+
+  # Loki storage configuration
+  - path: patches/loki-storage.yaml
+    target:
+      kind: StatefulSet
+      name: loki
+
+  # Tempo resource allocation
+  - path: patches/tempo-resources.yaml
+    target:
+      kind: Deployment
+      name: tempo
+
+# Images configuration
+images:
+  # Core monitoring components
+  - name: prometheus
+    newName: prom/prometheus
+    newTag: v2.42.0
+  - name: alertmanager
+    newName: prom/alertmanager
+    newTag: v0.25.0
+  - name: grafana
+    newName: grafana/grafana
+    newTag: 9.5.0
+  # Log aggregation
+  - name: loki
+    newName: grafana/loki
+    newTag: 2.8.0
+  - name: promtail
+    newName: grafana/promtail
+    newTag: 2.8.0
+  # Tracing components
+  - name: jaeger
+    newName: jaegertracing/all-in-one
+    newTag: 1.42.0
+  - name: tempo
+    newName: grafana/tempo
+    newTag: 2.1.0
+
+# Configurations for secret generation
+secretGenerator:
+  - name: monitoring-secrets
+    envs:
+      - secrets/monitoring.env
+    type: Opaque
+
+# Resource transformers
+transformers:
+  # Add standard Kubernetes labels
+  - labels.yaml
+  # Configure resource limits
+  - resources.yaml
