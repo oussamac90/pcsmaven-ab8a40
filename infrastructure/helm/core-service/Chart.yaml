@@ -1,0 +1,31 @@
+apiVersion: v2
+name: pcs-core-service
+description: Core Service component of the Port Community System handling business logic and data processing
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - core-service
+  - pcs
+  - port-community-system
+  - java
+  - spring-boot
+
+maintainers:
+  - name: PCS Team
+    email: team@pcs.com
+
+# Dependencies required for core service functionality
+dependencies:
+  # Prometheus for monitoring to achieve 99.9% availability target
+  - name: prometheus
+    version: 15.0.0
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: metrics.serviceMonitor.enabled
+
+  # Redis for caching and session management
+  - name: redis
+    version: 17.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
