@@ -1,0 +1,85 @@
+# Helm chart dependencies for Port Community System
+# Supports Kubernetes version 1.26.0 and above
+
+dependencies:
+  # Internal service dependencies
+  - name: api-gateway
+    version: 1.0.0
+    repository: file://../api-gateway
+    condition: api-gateway.enabled
+    tags:
+      - core
+      - routing
+
+  - name: core-service
+    version: 1.0.0
+    repository: file://../core-service
+    condition: core-service.enabled
+    tags:
+      - core
+      - business-logic
+
+  - name: document-service
+    version: 1.0.0
+    repository: file://../document-service
+    condition: document-service.enabled
+    tags:
+      - core
+      - edifact
+
+  - name: notification-service
+    version: 1.0.0
+    repository: file://../notification-service
+    condition: notification-service.enabled
+    tags:
+      - core
+      - messaging
+
+  - name: web
+    version: 1.0.0
+    repository: file://../web
+    condition: web.enabled
+    tags:
+      - core
+      - frontend
+
+  # External infrastructure dependencies
+  - name: nginx-ingress
+    version: 4.7.1
+    repository: https://kubernetes.github.io/ingress-nginx
+    condition: ingress.enabled
+    tags:
+      - infrastructure
+      - routing
+
+  - name: prometheus
+    version: 19.7.2
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: monitoring.enabled
+    tags:
+      - monitoring
+      - metrics
+
+  - name: grafana
+    version: 6.50.0
+    repository: https://grafana.github.io/helm-charts
+    condition: monitoring.enabled
+    tags:
+      - monitoring
+      - visualization
+
+  - name: cert-manager
+    version: 1.11.1
+    repository: https://charts.jetstack.io
+    condition: tls.enabled
+    tags:
+      - security
+      - certificates
+
+  - name: redis
+    version: 17.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+    tags:
+      - infrastructure
+      - cache
