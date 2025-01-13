@@ -1,0 +1,258 @@
+{{/* Generate AlertManager name */}}
+{{- $alertmanagerName := .Values.alertmanager.nameOverride | default "alertmanager" -}}
+
+{{/* Generate AlertManager namespace */}}
+{{- $namespace := .Release.Namespace -}}
+
+---
+# AlertManager ConfigMap containing core configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $alertmanagerName }}-config
+  namespace: {{ $namespace }}
+  labels:
+    app: alertmanager
+    component: monitoring
+    release: {{ .Release.Name }}
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: {{ .Values.alertmanager.config.global.resolve_timeout }}
+      smtp_smarthost: {{ .Values.alertmanager.config.global.smtp_smarthost }}
+      smtp_from: {{ .Values.alertmanager.config.global.smtp_from }}
+      smtp_require_tls: true
+
+    templates:
+      - /etc/alertmanager/templates/*.tmpl
+
+    route:
+      group_by: {{ .Values.alertmanager.config.route.group_by | toJson }}
+      group_wait: {{ .Values.alertmanager.config.route.group_wait }}
+      group_interval: {{ .Values.alertmanager.config.route.group_interval }}
+      repeat_interval: {{ .Values.alertmanager.config.route.repeat_interval }}
+      receiver: {{ .Values.alertmanager.config.route.receiver }}
+      routes:
+        {{- toYaml .Values.alertmanager.config.route.routes | nindent 8 }}
+
+    receivers:
+      {{- toYaml .Values.alertmanager.config.receivers | nindent 6 }}
+
+    inhibit_rules:
+      - source_match:
+          severity: critical
+        target_match:
+          severity: warning
+        equal: ['alertname', 'cluster', 'service']
+
+---
+# AlertManager Deployment for high availability
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $alertmanagerName }}
+  namespace: {{ $namespace }}
+  labels:
+    app: alertmanager
+    component: monitoring
+    release: {{ .Release.Name }}
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: alertmanager
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/alertmanager.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ $alertmanagerName }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - alertmanager
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - name: alertmanager
+        image: "prometheus/alertmanager:v0.25.0"
+        imagePullPolicy: IfNotPresent
+        args:
+          - "--config.file=/etc/alertmanager/alertmanager.yml"
+          - "--storage.path=/alertmanager"
+          - "--cluster.listen-address=0.0.0.0:9094"
+          - "--cluster.peer=alertmanager-0.alertmanager:9094"
+          - "--cluster.peer=alertmanager-1.alertmanager:9094"
+          - "--cluster.peer=alertmanager-2.alertmanager:9094"
+        ports:
+        - name: http
+          containerPort: 9093
+          protocol: TCP
+        - name: cluster
+          containerPort: 9094
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 200m
+            memory: 256Mi
+        volumeMounts:
+        - name: config
+          mountPath: /etc/alertmanager
+        - name: storage
+          mountPath: /alertmanager
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: config
+        configMap:
+          name: {{ $alertmanagerName }}-config
+      - name: storage
+        {{- if .Values.alertmanager.persistence.enabled }}
+        persistentVolumeClaim:
+          claimName: {{ $alertmanagerName }}-storage
+        {{- else }}
+        emptyDir: {}
+        {{- end }}
+
+---
+# AlertManager Service for network access
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $alertmanagerName }}
+  namespace: {{ $namespace }}
+  labels:
+    app: alertmanager
+    component: monitoring
+    release: {{ .Release.Name }}
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 9093
+    targetPort: http
+    protocol: TCP
+  - name: cluster
+    port: 9094
+    targetPort: cluster
+    protocol: TCP
+  selector:
+    app: alertmanager
+
+---
+# AlertManager NetworkPolicy for security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $alertmanagerName }}-network-policy
+  namespace: {{ $namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: alertmanager
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: prometheus
+    ports:
+    - protocol: TCP
+      port: 9093
+  - from:
+    - podSelector:
+        matchLabels:
+          app: alertmanager
+    ports:
+    - protocol: TCP
+      port: 9094
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: alertmanager
+    ports:
+    - protocol: TCP
+      port: 9094
+  - ports:
+    - protocol: TCP
+      port: 25
+    - protocol: TCP
+      port: 587
+    - protocol: TCP
+      port: 443
+
+---
+# AlertManager PodDisruptionBudget for high availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $alertmanagerName }}-pdb
+  namespace: {{ $namespace }}
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: alertmanager
+
+---
+# AlertManager ServiceAccount for RBAC
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $alertmanagerName }}
+  namespace: {{ $namespace }}
+  labels:
+    app: alertmanager
+    component: monitoring
+    release: {{ .Release.Name }}
+
+{{- if .Values.alertmanager.persistence.enabled }}
+---
+# AlertManager PersistentVolumeClaim for storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $alertmanagerName }}-storage
+  namespace: {{ $namespace }}
+  labels:
+    app: alertmanager
+    component: monitoring
+    release: {{ .Release.Name }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.alertmanager.persistence.size }}
+  storageClassName: {{ .Values.alertmanager.persistence.storageClass | default "standard" }}
+{{- end }}
