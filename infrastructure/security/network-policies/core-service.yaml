@@ -1,0 +1,85 @@
+# NetworkPolicy API version v1.26
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: core-service-network-policy
+  namespace: pcs
+  labels:
+    app: pcs
+    component: core-service
+  annotations:
+    description: "Network policy implementing zero-trust principles for Core Service"
+    compliance: "ISO 27001"
+    security-level: "restricted"
+
+spec:
+  # Target Core Service pods
+  podSelector:
+    matchLabels:
+      app: pcs
+      component: core-service
+
+  # Enable both ingress and egress policies
+  policyTypes:
+    - Ingress
+    - Egress
+
+  # Ingress rules
+  ingress:
+    # Allow traffic from API Gateway
+    - from:
+        - podSelector:
+            matchLabels:
+              app: pcs
+              component: api-gateway
+      ports:
+        - protocol: TCP
+          port: 8080
+          name: api-port
+
+    # Allow Prometheus metrics scraping
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8081
+          name: metrics-port
+
+  # Egress rules
+  egress:
+    # Allow outbound traffic to Document Service
+    - to:
+        - podSelector:
+            matchLabels:
+              app: pcs
+              component: document-service
+      ports:
+        - protocol: TCP
+          port: 8000
+          name: doc-service-port
+
+    # Allow outbound traffic to Notification Service
+    - to:
+        - podSelector:
+            matchLabels:
+              app: pcs
+              component: notification-service
+      ports:
+        - protocol: TCP
+          port: 3000
+          name: notify-service-port
+
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+          name: dns-port
