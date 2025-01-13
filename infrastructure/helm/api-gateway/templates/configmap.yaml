@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "api-gateway.fullname" . }}
+  labels:
+    {{- include "api-gateway.labels" . | nindent 4 }}
+  namespace: {{ .Release.Namespace }}
+data:
+  # Node.js Environment Settings
+  NODE_ENV: {{ .Values.env.NODE_ENV | quote }}
+  PORT: {{ .Values.env.PORT | quote }}
+  LOG_LEVEL: {{ .Values.env.LOG_LEVEL | quote }}
+
+  # Authentication Configuration
+  AUTH0_DOMAIN: {{ .Values.configMap.data.AUTH0_DOMAIN | quote }}
+  AUTH0_AUDIENCE: {{ .Values.configMap.data.AUTH0_AUDIENCE | quote }}
+  JWT_SECRET: {{ randAlphaNum 32 | quote }}
+  JWT_ALGORITHM: "RS256"
+  JWT_EXPIRES_IN: "1h"
+  
+  # API Key Configuration
+  API_KEY_HEADER: {{ .Values.configMap.data.API_KEY_HEADER | quote }}
+  API_KEY_EXPIRY_DAYS: {{ .Values.configMap.data.API_KEY_EXPIRY_DAYS | quote }}
+  
+  # CORS Configuration
+  CORS_ALLOWED_ORIGINS: {{ .Values.configMap.data.CORS_ALLOWED_ORIGINS | quote }}
+  CORS_ALLOWED_METHODS: {{ .Values.configMap.data.CORS_ALLOWED_METHODS | quote }}
+  CORS_ALLOWED_HEADERS: "Content-Type,Authorization,X-API-Key,X-Request-ID,X-Correlation-ID"
+  CORS_EXPOSED_HEADERS: "X-Request-ID,X-Rate-Limit-Remaining,X-Rate-Limit-Reset"
+  CORS_MAX_AGE: "7200"
+  CORS_ALLOW_CREDENTIALS: "true"
+  
+  # Rate Limiting Configuration
+  RATE_LIMIT_WINDOW_MS: {{ .Values.configMap.data.RATE_LIMIT_WINDOW_MS | quote }}
+  RATE_LIMIT_MAX_REQUESTS: {{ .Values.configMap.data.RATE_LIMIT_MAX_REQUESTS | quote }}
+  RATE_LIMIT_SKIP_TRUSTED: "true"
+  
+  # Redis Session Store Configuration
+  REDIS_HOST: {{ .Values.redis.host | default "redis-master" | quote }}
+  REDIS_PORT: {{ .Values.redis.port | default "6379" | quote }}
+  REDIS_PASSWORD: {{ .Values.redis.password | default "" | quote }}
+  REDIS_TLS_ENABLED: "true"
+  REDIS_KEY_PREFIX: "pcs:session:"
+  
+  # Request Processing Configuration
+  REQUEST_TIMEOUT_MS: {{ .Values.configMap.data.REQUEST_TIMEOUT_MS | quote }}
+  MAX_REQUEST_SIZE: {{ .Values.configMap.data.MAX_REQUEST_SIZE | quote }}
+  TRUST_PROXY: "true"
+  
+  # Security Headers Configuration
+  SECURITY_HEADERS: |
+    {
+      "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+      "x-frame-options": "DENY",
+      "x-content-type-options": "nosniff",
+      "x-xss-protection": "1; mode=block",
+      "referrer-policy": "strict-origin-when-cross-origin",
+      "content-security-policy": "default-src 'self'; frame-ancestors 'none'",
+      "permissions-policy": "geolocation=(), microphone=(), camera=()"
+    }
+  
+  # Monitoring and Observability
+  METRICS_ENABLED: {{ .Values.env.METRICS_ENABLED | quote }}
+  METRICS_PREFIX: "api_gateway_"
+  TRACING_ENABLED: "true"
+  TRACING_SAMPLING_RATE: "0.1"
+  
+  # Error Handling Configuration
+  ERROR_REPORTING_LEVEL: "production"
+  STACK_TRACE_LIMIT: "10"
+  SANITIZE_ERROR_MESSAGES: "true"
+  
+  # Circuit Breaker Configuration
+  CIRCUIT_BREAKER_TIMEOUT: "5000"
+  CIRCUIT_BREAKER_RESET_TIMEOUT: "30000"
+  CIRCUIT_BREAKER_ERROR_THRESHOLD: "50"
+  
+  # Health Check Configuration
+  HEALTH_CHECK_PATH: "/health"
+  HEALTH_CHECK_TIMEOUT: "2000"
+  
+  # API Documentation
+  SWAGGER_ENABLED: "true"
+  SWAGGER_PATH: "/api-docs"
+  SWAGGER_SPEC_VERSION: "3.0.0"
