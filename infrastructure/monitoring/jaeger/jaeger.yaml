@@ -1,0 +1,88 @@
+# Jaeger configuration for Port Community System
+# Version: 1.43.0
+# Integration with Tempo backend for scalable trace storage
+
+apiVersion: jaegertracing.io/v1
+kind: Jaeger
+metadata:
+  name: pcs-jaeger
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: pcs-monitoring
+    app.kubernetes.io/component: tracing
+spec:
+  # Production deployment strategy for high availability
+  strategy: production
+
+  # Ingress configuration with OAuth proxy security
+  ingress:
+    enabled: true
+    security: oauth-proxy
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+
+  # Storage configuration using Tempo backend via gRPC plugin
+  storage:
+    type: grpc-plugin
+    options:
+      grpc-storage-plugin:
+        plugin: tempo
+        tempo-endpoint: tempo.monitoring.svc:9095
+
+  # Agent configuration running as DaemonSet on each node
+  agent:
+    strategy: DaemonSet
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+  # Collector configuration with autoscaling and queue settings
+  collector:
+    maxReplicas: 5
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 500m
+        memory: 512Mi
+    options:
+      collector.queue-size: "2000"  # From COLLECTOR_QUEUE_SIZE global
+      collector.num-workers: "50"   # Optimized for high throughput
+
+  # Query service configuration for UI and API access
+  query:
+    replicas: 2
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+  # Sampling configuration for different services
+  sampling:
+    options:
+      default_strategy:
+        type: probabilistic
+        param: 1.0  # From SAMPLING_RATE global
+      service_strategies:
+        # Service-specific sampling strategies
+        - service: api-gateway
+          type: probabilistic
+          param: 1.0
+        - service: core-service
+          type: probabilistic
+          param: 1.0
+        - service: document-service
+          type: probabilistic
+          param: 1.0
+        - service: notification-service
+          type: probabilistic
+          param: 1.0
