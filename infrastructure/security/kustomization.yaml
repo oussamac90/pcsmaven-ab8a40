@@ -1,0 +1,155 @@
+# kustomize v5.0.0
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Target namespace for all resources
+namespace: pcs
+
+# List of all security-related resources to be applied
+resources:
+# Network Policies for service mesh security
+- network-policies/api-gateway.yaml
+- network-policies/core-service.yaml
+- network-policies/document-service.yaml
+- network-policies/notification-service.yaml
+- network-policies/web.yaml
+
+# RBAC configurations for access control
+- rbac/cluster-roles.yaml
+- rbac/role-bindings.yaml
+- rbac/service-accounts.yaml
+
+# Pod Security Policies
+- pod-security-policies/restricted.yaml
+
+# TLS Certificate configurations
+- certificates/cluster-issuer.yaml
+- certificates/certificates.yaml
+
+# Common labels for all resources
+commonLabels:
+  app: pcs
+  environment: ${ENV}
+  managed-by: kustomize
+  security.pcs.io/tier: critical
+  security.pcs.io/component: infrastructure
+
+# Common annotations for security compliance and tracking
+commonAnnotations:
+  # ISO 27001 compliance tracking
+  security.pcs.io/compliance: iso27001
+  security.pcs.io/last-review: ${LAST_REVIEW_DATE}
+  security.pcs.io/review-frequency: 90d
+  security.pcs.io/approved-by: ${SECURITY_APPROVER}
+  security.pcs.io/data-classification: critical
+
+# Configuration for specific components
+configurations:
+  # Ensure namespace is applied to cluster-scoped resources
+  - nameReference:
+      kind: ClusterRole
+      fieldSpecs:
+        - path: subjects/namespace
+          kind: ClusterRoleBinding
+  # Certificate configuration
+  - nameReference:
+      kind: Certificate
+      fieldSpecs:
+        - path: spec/dnsNames
+          kind: Certificate
+
+# Patches to customize base resources
+patches:
+  # Add security context constraints to all pods
+  - target:
+      kind: Deployment
+      labelSelector: "app=pcs"
+    patch: |-
+      - op: add
+        path: /spec/template/spec/securityContext
+        value:
+          runAsNonRoot: true
+          runAsUser: 1000
+          fsGroup: 2000
+          seccompProfile:
+            type: RuntimeDefault
+
+# Transformers for consistent security configurations
+transformers:
+  # Ensure all pods have security policies applied
+  - |-
+    apiVersion: security.pcs.io/v1beta1
+    kind: SecurityPolicyTransformer
+    metadata:
+      name: default-pod-security
+    spec:
+      addSecurityContext: true
+      runAsNonRoot: true
+      readOnlyRootFilesystem: true
+
+# Validation configuration
+validationConfig:
+  # Enforce security policy validation
+  - path: security-policies.yaml
+    type: SecurityPolicy
+  # Validate network policies
+  - path: network-policies.yaml
+    type: NetworkPolicy
+
+# Resource generator configurations
+generatorOptions:
+  # Ensure generated resources have consistent security labels
+  labels:
+    security.pcs.io/generated: "true"
+  annotations:
+    security.pcs.io/generator-version: "v5.0.0"
+  disableNameSuffixHash: false
+
+# Secret generator for TLS certificates
+secretGenerator:
+  - name: tls-certificates
+    files:
+      - certificates/tls.crt
+      - certificates/tls.key
+    type: kubernetes.io/tls
+    options:
+      labels:
+        security.pcs.io/type: certificate
+      annotations:
+        cert-manager.io/certificate-name: pcs-tls
+
+# ConfigMap generator for security policies
+configMapGenerator:
+  - name: security-policies
+    files:
+      - pod-security-policies/baseline.yaml
+      - network-policies/default.yaml
+    options:
+      labels:
+        security.pcs.io/type: policy
+      annotations:
+        policy.pcs.io/last-updated: ${LAST_REVIEW_DATE}
+
+# Vars for substitution
+vars:
+  - name: ENV
+    objref:
+      kind: ConfigMap
+      name: env-config
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.environment
+  - name: LAST_REVIEW_DATE
+    objref:
+      kind: ConfigMap
+      name: security-metadata
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.lastReviewDate
+  - name: SECURITY_APPROVER
+    objref:
+      kind: ConfigMap
+      name: security-metadata
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.securityApprover
