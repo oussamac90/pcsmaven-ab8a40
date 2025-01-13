@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-config
+  namespace: pcs
+  labels:
+    app: pcs-web
+    environment: production
+    component: frontend
+    part-of: port-community-system
+data:
+  # API Configuration
+  REACT_APP_API_URL: "https://api.pcs.production/api/v1"
+  REACT_APP_API_TIMEOUT: "30000"  # 30 second timeout to ensure <2s response SLA
+  
+  # WebSocket Configuration
+  REACT_APP_SOCKET_URL: "wss://socket.pcs.production"
+  REACT_APP_SOCKET_RECONNECTION_ATTEMPTS: "5"
+  REACT_APP_SOCKET_RECONNECTION_DELAY: "1000"
+  
+  # Authentication Configuration
+  REACT_APP_AUTH_DOMAIN: "auth.pcs.production"
+  REACT_APP_AUTH_AUDIENCE: "https://api.pcs.production"
+  REACT_APP_AUTH_SCOPE: "openid profile email"
+  REACT_APP_AUTH_RESPONSE_TYPE: "code"
+  REACT_APP_AUTH_GRANT_TYPE: "authorization_code"
+  
+  # Environment Configuration
+  REACT_APP_ENV: "production"
+  REACT_APP_VERSION: "1.0.0"
+  
+  # Feature Flags
+  REACT_APP_ENABLE_ANALYTICS: "true"
+  REACT_APP_ENABLE_CACHE: "true"
+  REACT_APP_ENABLE_NOTIFICATIONS: "true"
+  REACT_APP_ENABLE_OFFLINE_MODE: "false"
+  
+  # Performance Configuration
+  REACT_APP_MAX_CONCURRENT_REQUESTS: "10"
+  REACT_APP_CACHE_DURATION: "300"  # 5 minutes
+  REACT_APP_IDLE_TIMEOUT: "1800"   # 30 minutes
+  
+  # Logging Configuration
+  REACT_APP_LOG_LEVEL: "error"
+  REACT_APP_LOG_ENDPOINT: "https://logging.pcs.production/web"
+  REACT_APP_ERROR_REPORTING: "true"
+  
+  # Security Configuration
+  REACT_APP_TLS_VERSION: "TLS 1.2,TLS 1.3"
+  REACT_APP_SECURE_COOKIES: "true"
+  REACT_APP_CSP_ENABLED: "true"
+  REACT_APP_XSS_PROTECTION: "true"
+  
+  # Integration Endpoints
+  REACT_APP_VESSEL_TRACKING_URL: "https://vts.pcs.production/api"
+  REACT_APP_DOCUMENT_SERVICE_URL: "https://docs.pcs.production/api"
+  REACT_APP_CUSTOMS_SERVICE_URL: "https://customs.pcs.production/api"
+  
+  # Monitoring Configuration
+  REACT_APP_METRICS_ENABLED: "true"
+  REACT_APP_METRICS_ENDPOINT: "https://metrics.pcs.production/web"
+  REACT_APP_HEALTH_CHECK_INTERVAL: "30"  # seconds
+  
+  # UI Configuration
+  REACT_APP_THEME: "maritime"
+  REACT_APP_LANGUAGE: "en"
+  REACT_APP_DATE_FORMAT: "YYYY-MM-DD"
+  REACT_APP_TIME_FORMAT: "HH:mm:ss"
+  REACT_APP_TIMEZONE: "UTC"
+  
+  # Rate Limiting
+  REACT_APP_RATE_LIMIT_REQUESTS: "1000"
+  REACT_APP_RATE_LIMIT_INTERVAL: "60"  # seconds
