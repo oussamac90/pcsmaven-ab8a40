@@ -1,0 +1,191 @@
+# Default values for document-service
+
+# Number of replicas for the document service deployment
+replicaCount: 2
+
+# Image configuration
+image:
+  repository: python
+  tag: "3.9-slim"
+  pullPolicy: IfNotPresent
+
+# Image pull secrets configuration
+imagePullSecrets: []
+
+# Override name of the chart
+nameOverride: ""
+
+# Override full name of the chart
+fullnameOverride: ""
+
+# Service account configuration
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use
+  name: ""
+
+# Pod annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+
+# Pod security context
+podSecurityContext:
+  fsGroup: 1000
+  runAsUser: 1000
+  runAsNonRoot: true
+
+# Container security context
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8080
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: "1"
+    memory: "2Gi"
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+
+# Horizontal Pod Autoscaling
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# Node selector configuration
+nodeSelector: {}
+
+# Pod tolerations
+tolerations: []
+
+# Pod affinity rules
+affinity: {}
+
+# MongoDB configuration
+mongodb:
+  enabled: true
+  auth:
+    enabled: true
+    rootPassword: ""  # To be set via secrets
+    username: "document-service"
+    database: "documents"
+  persistence:
+    enabled: true
+    size: "20Gi"
+
+# Redis configuration
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    password: ""  # To be set via secrets
+  master:
+    persistence:
+      enabled: true
+      size: "5Gi"
+
+# EDIFACT message processing configuration
+edifact:
+  messageTypes:
+    - IFTSTA
+    - IFTMBC
+    - COARRI
+  validation:
+    enabled: true
+    strictMode: true
+  processing:
+    maxRetries: 3
+    timeoutSeconds: 30
+
+# Monitoring configuration
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: "30s"
+
+# Environment-specific configurations
+env:
+  # Application configuration
+  APP_NAME: "document-service"
+  LOG_LEVEL: "INFO"
+  
+  # Document processing settings
+  MAX_FILE_SIZE: "10MB"
+  SUPPORTED_FORMATS:
+    - "EDIFACT"
+    - "PDF"
+    - "XML"
+  
+  # Security settings
+  ENCRYPTION_ENABLED: true
+  TLS_ENABLED: true
+
+# Volume mounts configuration
+volumeMounts:
+  # Temporary storage for document processing
+  tempStorage:
+    enabled: true
+    size: "1Gi"
+    storageClass: "standard"
+
+# Liveness probe configuration
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Readiness probe configuration
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 20
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Network policy configuration
+networkPolicy:
+  enabled: true
+  ingressRules:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: api-gateway
+  egressRules:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: mongodb
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: redis
+
+# Ingress configuration
+ingress:
+  enabled: false
+  annotations: {}
+  hosts: []
+  tls: []
