@@ -1,0 +1,199 @@
+{{/* Prometheus Helm Template for Port Community System */}}
+{{/* Version: 1.0.0 */}}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "prometheus.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "prometheus.fullname" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: {{ .Values.prometheus.server.global.scrape_interval }}
+      evaluation_interval: {{ .Values.prometheus.server.global.evaluation_interval }}
+      scrape_timeout: {{ .Values.prometheus.server.global.scrape_timeout }}
+      external_labels:
+        cluster: pcs-cluster
+        environment: {{ .Release.Namespace }}
+
+    # Alert Rules Configuration
+    rule_files:
+      - /etc/prometheus/rules/*.yaml
+
+    scrape_configs:
+      # System Performance Monitoring
+      - job_name: 'api-performance'
+        metrics_path: '/metrics'
+        kubernetes_sd_configs:
+          - role: service
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+        metric_relabel_configs:
+          - source_labels: [http_request_duration_seconds]
+            action: keep
+            regex: .*;.*
+
+      # Security Monitoring
+      - job_name: 'security-metrics'
+        static_configs:
+          - targets: ['waf:9100']
+        metric_relabel_configs:
+          - source_labels: [waf_requests_total]
+            action: keep
+          - source_labels: [auth_failures_total]
+            action: keep
+          - source_labels: [api_requests_per_second]
+            action: keep
+
+      # Infrastructure Monitoring
+      - job_name: 'kubernetes-monitoring'
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "prometheus.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "prometheus.fullname" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.prometheus.server.replicas | default 3 }}
+  selector:
+    matchLabels:
+      app: {{ template "prometheus.fullname" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "prometheus.fullname" . }}
+    spec:
+      serviceAccountName: {{ template "prometheus.fullname" . }}
+      securityContext:
+        {{- toYaml .Values.prometheus.server.securityContext | nindent 8 }}
+      containers:
+        - name: prometheus
+          image: "prom/prometheus:v2.42.0"
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time={{ .Values.prometheus.server.retention }}
+            - --web.console.libraries=/etc/prometheus/console_libraries
+            - --web.console.templates=/etc/prometheus/consoles
+            - --web.enable-lifecycle
+          ports:
+            - containerPort: 9090
+          resources:
+            {{- toYaml .Values.prometheus.server.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+            - name: storage
+              mountPath: /prometheus
+      volumes:
+        - name: config
+          configMap:
+            name: {{ template "prometheus.fullname" . }}-config
+        - name: storage
+          persistentVolumeClaim:
+            claimName: {{ template "prometheus.fullname" . }}-storage
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "prometheus.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ template "prometheus.fullname" . }}
+spec:
+  ports:
+    - port: 9090
+      targetPort: 9090
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ template "prometheus.fullname" . }}
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ template "prometheus.fullname" . }}-storage
+  namespace: {{ .Release.Namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.prometheus.server.persistentVolume.size }}
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ template "prometheus.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ template "prometheus.fullname" . }}
+  endpoints:
+    - port: http
+      interval: {{ .Values.prometheus.server.global.scrape_interval }}
+      path: /metrics
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ template "prometheus.fullname" . }}-rules
+  namespace: {{ .Release.Namespace }}
+spec:
+  groups:
+    - name: system.rules
+      rules:
+        - alert: HighResponseTime
+          expr: http_request_duration_seconds > 2
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: High response time detected
+            description: Response time exceeds 2 seconds threshold
+
+        - alert: SecurityBreach
+          expr: waf_blocked_requests_total > 10
+          for: 1m
+          labels:
+            severity: critical
+            team: security
+          annotations:
+            summary: Security breach detected
+            description: WAF blocked requests exceeded threshold
+
+        - alert: HighConcurrentUsers
+          expr: concurrent_users > 1000
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: High concurrent user load
+            description: System experiencing high user load
