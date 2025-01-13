@@ -1,0 +1,85 @@
+apiVersion: networking.k8s.io/v1  # v1.26
+kind: NetworkPolicy
+metadata:
+  name: notification-service-network-policy
+  namespace: pcs
+  labels:
+    app: pcs
+    component: network-policy
+    service: notification
+spec:
+  # Select notification service pods
+  podSelector:
+    matchLabels:
+      app: notification-service
+  
+  # Enable both ingress and egress policies
+  policyTypes:
+    - Ingress
+    - Egress
+
+  # Ingress rules
+  ingress:
+    # Allow WebSocket traffic from API Gateway
+    - from:
+        - podSelector:
+            matchLabels:
+              app: pcs
+              component: api-gateway
+      ports:
+        - protocol: TCP
+          port: 3003
+
+    # Allow event traffic from Core Service
+    - from:
+        - podSelector:
+            matchLabels:
+              app: pcs
+              component: core-service
+      ports:
+        - protocol: TCP
+          port: 3003
+
+    # Allow Prometheus metrics scraping
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 3003
+
+  # Egress rules  
+  egress:
+    # Allow RabbitMQ access
+    - to:
+        - podSelector:
+            matchLabels:
+              app: rabbitmq
+      ports:
+        - protocol: TCP
+          port: 5672
+
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+
+    # Allow SMTP with private network restrictions
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8      # Private network
+              - 172.16.0.0/12   # Private network
+              - 192.168.0.0/16  # Private network
+      ports:
+        - protocol: TCP
+          port: 587
