@@ -1,0 +1,57 @@
+# Kubernetes v1.26
+# Persistent Volume Claims for Port Community System storage requirements
+# Uses AWS EFS storage class for multi-pod read-write access
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: document-storage
+  namespace: pcs
+  labels:
+    app: pcs
+    component: document-service
+    storage-type: document
+spec:
+  accessModes:
+    - ReadWriteMany  # Allows multiple pods to read/write simultaneously
+  resources:
+    requests:
+      storage: 100Gi  # 100GB storage for document service
+  storageClassName: aws-efs
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cargo-manifest-storage
+  namespace: pcs
+  labels:
+    app: pcs
+    component: core-service
+    storage-type: manifest
+spec:
+  accessModes:
+    - ReadWriteMany  # Allows multiple core service pods to access manifest data
+  resources:
+    requests:
+      storage: 50Gi  # 50GB storage for cargo manifests
+  storageClassName: aws-efs
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: edifact-archive
+  namespace: pcs
+  labels:
+    app: pcs
+    component: document-service
+    storage-type: archive
+spec:
+  accessModes:
+    - ReadWriteMany  # Allows multiple pods to access archived EDIFACT messages
+  resources:
+    requests:
+      storage: 200Gi  # 200GB storage for EDIFACT message archives
+  storageClassName: aws-efs
