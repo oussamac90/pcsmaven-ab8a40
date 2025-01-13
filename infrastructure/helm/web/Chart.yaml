@@ -1,0 +1,38 @@
+apiVersion: v2
+name: pcs-web
+description: Port Community System Web Frontend Application
+type: application
+version: 1.0.0
+appVersion: 1.0.0
+
+# Keywords to help with chart discoverability
+keywords:
+  - web
+  - frontend
+  - react
+  - port-community-system
+
+# Maintainer information
+maintainers:
+  - name: PCS Team
+    email: team@pcs.example.com
+
+# Chart annotations for additional metadata
+annotations:
+  # Resource requirements based on container strategy
+  resources.min.cpu: "0.5"
+  resources.min.memory: "1Gi"
+  resources.max.cpu: "2"
+  resources.max.memory: "4Gi"
+  
+  # Scaling configuration for high availability
+  scaling.min: "2"
+  scaling.max: "5"
+  scaling.targetCPUUtilization: "80"
+  
+  # Performance targets
+  performance.availability: "99.9"
+  performance.responseTime: "<2s"
+
+# No external chart dependencies required for the web frontend
+dependencies: []
