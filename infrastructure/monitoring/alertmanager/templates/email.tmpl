@@ -1,0 +1,184 @@
+{{ define "email.subject" }}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ $highestSeverity := .CommonLabels.severity | default "none" }} PCS Alert - {{ .GroupLabels.alertname }} {{ if eq $highestSeverity "critical" }}(Immediate Response Required){{ end }}
+{{ end }}
+
+{{ define "email.html" }}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style type="text/css">
+        /* Base styles */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* Container */
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* Header */
+        .header {
+            background-color: #003366;
+            padding: 20px;
+            color: white;
+            border-radius: 5px 5px 0 0;
+        }
+        
+        /* Alert Summary */
+        .summary {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        /* Severity Colors */
+        .severity-critical {
+            color: #dc3545;
+            border-left: 4px solid #dc3545;
+        }
+        .severity-warning {
+            color: #ffc107;
+            border-left: 4px solid #ffc107;
+        }
+        .severity-info {
+            color: #0066CC;
+            border-left: 4px solid #0066CC;
+        }
+        
+        /* Alert Details */
+        .alert-details {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: white;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+        }
+        
+        /* Metrics */
+        .metrics {
+            background-color: #f8f9fa;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        /* Response Guidance */
+        .response-guidance {
+            background-color: #e9ecef;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        
+        /* Footer */
+        .footer {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 0 0 5px 5px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+        
+        /* Responsive Design */
+        @media screen and (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            .header, .summary, .alert-details {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h2>Port Community System Alert Notification</h2>
+            <p>Status: {{ .Status | toUpper }}</p>
+            <p>Environment: {{ .CommonLabels.environment | default "production" | toUpper }}</p>
+        </div>
+
+        <!-- Alert Summary -->
+        <div class="summary">
+            <h3>Alert Summary</h3>
+            <p>Total Alerts: {{ .Alerts | len }}</p>
+            {{ if .Alerts.Firing }}
+            <p>Firing: {{ .Alerts.Firing | len }}</p>
+            {{ end }}
+            {{ if .Alerts.Resolved }}
+            <p>Resolved: {{ .Alerts.Resolved | len }}</p>
+            {{ end }}
+        </div>
+
+        <!-- Alert Details -->
+        {{ range .Alerts }}
+        <div class="alert-details severity-{{ .Labels.severity }}">
+            <h4>{{ .Labels.alertname }}</h4>
+            <p><strong>Severity:</strong> {{ .Labels.severity | toUpper }}</p>
+            <p><strong>Status:</strong> {{ .Status }}</p>
+            {{ if .Labels.instance }}
+            <p><strong>Instance:</strong> {{ .Labels.instance }}</p>
+            {{ end }}
+            
+            <!-- Alert Description -->
+            <p>{{ .Annotations.description }}</p>
+            
+            <!-- Metrics -->
+            {{ if .Annotations.value }}
+            <div class="metrics">
+                <p><strong>Current Value:</strong> {{ .Annotations.value }}</p>
+                {{ if .Annotations.threshold }}
+                <p><strong>Threshold:</strong> {{ .Annotations.threshold }}</p>
+                {{ end }}
+            </div>
+            {{ end }}
+            
+            <!-- Response Guidance -->
+            <div class="response-guidance">
+                <h5>Response Requirements</h5>
+                {{ if eq .Labels.severity "critical" }}
+                <p>⚠️ IMMEDIATE RESPONSE REQUIRED - Target Response Time: 5 minutes</p>
+                {{ else if eq .Labels.severity "warning" }}
+                <p>⚠️ Response Required - Target Response Time: 15 minutes</p>
+                {{ else }}
+                <p>ℹ️ Investigation Required - Target Response Time: 1 hour</p>
+                {{ end }}
+                
+                <!-- Runbook Links -->
+                {{ if .Annotations.runbook_url }}
+                <p><strong>Runbook:</strong> <a href="{{ .Annotations.runbook_url }}">View Response Procedure</a></p>
+                {{ end }}
+            </div>
+            
+            <!-- Timestamps -->
+            <p><strong>Started:</strong> {{ .StartsAt }}</p>
+            {{ if .EndsAt }}
+            <p><strong>Resolved:</strong> {{ .EndsAt }}</p>
+            {{ end }}
+        </div>
+        {{ end }}
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>This alert was generated by AlertManager v0.25.0</p>
+            <p>Alert Configuration: <a href="{{ .ExternalURL }}">View in AlertManager</a></p>
+            <p>To update notification preferences or unsubscribe, please contact your system administrator.</p>
+            <p>Port Community System - Security & Performance Monitoring</p>
+        </div>
+    </div>
+</body>
+</html>
+{{ end }}
