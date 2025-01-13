@@ -1,0 +1,145 @@
+# Prometheus Alert Rules Configuration v2.42.0
+# Defines alerting rules for the Port Community System monitoring
+
+groups:
+  # System Availability Monitoring
+  - name: system_availability
+    rules:
+    - alert: ServiceAvailabilityLow
+      expr: job:request_availability:ratio < 0.999
+      for: 5m
+      labels:
+        severity: critical
+        team: operations
+      annotations:
+        summary: Service availability below 99.9%
+        description: Service {{ $labels.service }} availability is {{ $value | humanize }}%
+
+    - alert: HighResponseTime
+      expr: job:request_latency:p95 > 2
+      for: 5m
+      labels:
+        severity: warning
+        team: operations
+      annotations:
+        summary: Response time above 2 seconds
+        description: 95th percentile response time is {{ $value }} seconds
+
+    - alert: HighConcurrentUsers
+      expr: sum(rate(http_requests_total[5m])) by (instance) > 1000
+      for: 5m
+      labels:
+        severity: warning
+        team: operations
+      annotations:
+        summary: High concurrent user load
+        description: Instance {{ $labels.instance }} has {{ $value }} concurrent users
+
+  # Security Monitoring
+  - name: security_alerts
+    rules:
+    - alert: WAFAttackSpike
+      expr: rate(waf_attacks_total[1m]) > 10
+      for: 1m
+      labels:
+        severity: critical
+        team: security
+      annotations:
+        summary: High rate of WAF attacks detected
+        description: '{{ $value }} WAF attacks/minute detected'
+
+    - alert: AuthenticationFailures
+      expr: rate(authentication_failures_total[1m]) > 5
+      for: 1m
+      labels:
+        severity: critical
+        team: security
+      annotations:
+        summary: High rate of authentication failures
+        description: '{{ $value }} authentication failures/minute detected'
+
+    - alert: APIRateLimitExceeded
+      expr: rate(api_requests_total[1s]) > 1000
+      for: 30s
+      labels:
+        severity: critical
+        team: security
+      annotations:
+        summary: API rate limit exceeded
+        description: IP {{ $labels.source_ip }} exceeded 1000 requests/second
+
+    - alert: UnauthorizedFileAccess
+      expr: rate(unauthorized_file_access_total[5m]) > 0
+      for: 1m
+      labels:
+        severity: critical
+        team: security
+      annotations:
+        summary: Unauthorized file access detected
+        description: Unauthorized access attempt to {{ $labels.file_path }}
+
+  # Business KPIs
+  - name: business_kpis
+    rules:
+    - alert: DocumentProcessingDelay
+      expr: avg_over_time(document_processing_duration_seconds[1h]) > 300
+      for: 15m
+      labels:
+        severity: warning
+        team: business
+      annotations:
+        summary: Document processing time above target
+        description: Average document processing time is {{ $value }} seconds
+
+    - alert: CargoDwellTimeHigh
+      expr: cargo_dwell_time_hours > 72
+      for: 1h
+      labels:
+        severity: warning
+        team: operations
+      annotations:
+        summary: Cargo dwell time exceeds threshold
+        description: Cargo dwell time is {{ $value }} hours
+
+    - alert: GateTransactionDelay
+      expr: gate_transaction_duration_seconds > 180
+      for: 15m
+      labels:
+        severity: warning
+        team: operations
+      annotations:
+        summary: Gate transaction time above target
+        description: Gate transaction time is {{ $value }} seconds
+
+  # Resource Utilization
+  - name: resource_utilization
+    rules:
+    - alert: HighCPUUsage
+      expr: container_cpu_usage_seconds_total > 0.8
+      for: 5m
+      labels:
+        severity: warning
+        team: operations
+      annotations:
+        summary: High CPU utilization
+        description: Container {{ $labels.container }} CPU usage at {{ $value | humanize }}%
+
+    - alert: HighMemoryUsage
+      expr: container_memory_usage_bytes / container_memory_max_bytes > 0.85
+      for: 5m
+      labels:
+        severity: warning
+        team: operations
+      annotations:
+        summary: High memory utilization
+        description: Container {{ $labels.container }} memory usage at {{ $value | humanize }}%
+
+    - alert: DiskSpaceRunningLow
+      expr: disk_free_bytes / disk_total_bytes < 0.1
+      for: 15m
+      labels:
+        severity: warning
+        team: operations
+      annotations:
+        summary: Low disk space
+        description: Disk {{ $labels.device }} has {{ $value | humanize }}% free space
