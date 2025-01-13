@@ -1,0 +1,51 @@
+apiVersion: v2
+name: notification-service
+version: 1.0.0
+appVersion: 1.0.0
+description: Notification service for the Port Community System handling real-time alerts, email notifications, and WebSocket communications
+type: application
+
+# Keywords for chart discovery and categorization
+keywords:
+  - notifications
+  - websockets
+  - real-time
+  - alerts
+  - port-community-system
+  - nodejs
+  - socketio
+  - messaging
+  - pcs
+
+# Chart maintainers information
+maintainers:
+  - name: PCS DevOps Team
+    email: devops@pcs.example.com
+    role: Primary Maintainer
+  - name: PCS Platform Team
+    email: platform@pcs.example.com
+    role: Secondary Maintainer
+
+# Chart home page and source repository
+home: https://pcs.example.com/notification-service
+sources:
+  - https://github.com/example/pcs/notification-service
+
+# Prometheus monitoring annotations
+annotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+  prometheus.io/path: "/metrics"
+
+# Chart dependencies
+dependencies:
+  - name: rabbitmq
+    version: 12.0.0
+    repository: https://charts.bitnami.com/bitnami
+    condition: rabbitmq.enabled
+    tags:
+      - messaging
+      - queue
+
+# Kubernetes version requirement
+kubeVersion: ">=1.26.0"
