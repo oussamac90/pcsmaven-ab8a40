@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="240" height="80" viewBox="0 0 240 80" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" role="img" aria-labelledby="logo-title logo-desc">
+    <!-- Accessibility Labels -->
+    <title id="logo-title">Port Community System Logo</title>
+    <desc id="logo-desc">Official logo of the Port Community System featuring a maritime-themed design</desc>
+    
+    <!-- Definitions for reusable elements -->
+    <defs>
+        <!-- Wave Pattern -->
+        <path id="wave" d="M0,10 C10,0 20,20 30,10 C40,0 50,20 60,10" fill="none" stroke-width="2"/>
+        
+        <!-- Ship Icon -->
+        <symbol id="ship-icon" viewBox="0 0 60 40">
+            <path d="M10,30 L50,30 L45,20 L40,20 L40,10 L30,10 L30,20 L15,20 Z" />
+            <rect x="32" y="5" width="6" height="15"/>
+        </symbol>
+    </defs>
+    
+    <!-- Background Elements -->
+    <g id="background">
+        <!-- Subtle Wave Pattern -->
+        <use xlink:href="#wave" transform="translate(0,60)" stroke="#00A3E0" opacity="0.3">
+            <animate attributeName="opacity" values="0.3;0.5;0.3" dur="3s" repeatCount="indefinite"/>
+        </use>
+        <use xlink:href="#wave" transform="translate(60,60)" stroke="#00A3E0" opacity="0.3">
+            <animate attributeName="opacity" values="0.3;0.5;0.3" dur="3s" repeatCount="indefinite" begin="1s"/>
+        </use>
+    </g>
+    
+    <!-- Main Logo Elements -->
+    <g id="logo-main" transform="translate(20,10)">
+        <!-- Ship Symbol -->
+        <g id="ship" transform="translate(0,10)" fill="#003366">
+            <use xlink:href="#ship-icon" width="60" height="40"/>
+        </g>
+        
+        <!-- Text Elements -->
+        <g id="text" transform="translate(70,25)" fill="#003366">
+            <text x="0" y="0" font-family="Inter, sans-serif" font-size="24" font-weight="600">PCS</text>
+            <text x="0" y="20" font-family="Inter, sans-serif" font-size="14" font-weight="400">Port Community System</text>
+        </g>
+        
+        <!-- Accent Elements -->
+        <path d="M65,25 L67,25" stroke="#00A3E0" stroke-width="2"/>
+        <circle cx="60" cy="25" r="2" fill="#0066CC"/>
+    </g>
+    
+    <!-- Responsive Design Support -->
+    <style>
+        @media (max-width: 768px) {
+            #text { transform: translate(70,25) scale(0.8); }
+        }
+        @media (max-width: 480px) {
+            #text { transform: translate(70,25) scale(0.6); }
+        }
+    </style>
+    
+    <!-- High Contrast Mode Support -->
+    <style>
+        @media (forced-colors: active) {
+            #ship { fill: CanvasText; }
+            #text { fill: CanvasText; }
+            path[stroke], circle { forced-color-adjust: auto; }
+        }
+    </style>
+</svg>
