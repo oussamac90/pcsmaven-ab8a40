@@ -1,0 +1,93 @@
+# Prometheus Recording Rules Configuration v2.42.0
+# Defines pre-computed expressions and aggregations for efficient querying of Port Community System metrics
+
+groups:
+  # API Latency Metrics
+  - name: api_latency
+    rules:
+      # 99th percentile of HTTP request duration for SLA tracking
+      - record: job:http_request_duration_seconds:99percentile
+        expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job))
+        labels:
+          severity: latency
+      
+      # 95th percentile of HTTP request duration for performance monitoring
+      - record: job:http_request_duration_seconds:95percentile
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job))
+        labels:
+          severity: latency
+
+  # Error Rate Metrics
+  - name: error_rates
+    rules:
+      # HTTP 5xx error rate by job
+      - record: job:http_requests_total:error_rate
+        expr: sum(rate(http_requests_total{status=~"5.."}[5m])) by (job) / sum(rate(http_requests_total[5m])) by (job)
+        labels:
+          severity: errors
+
+  # Resource Usage Metrics
+  - name: resource_usage
+    rules:
+      # Container memory usage aggregated by job
+      - record: job:container_memory_usage_bytes:sum
+        expr: sum(container_memory_usage_bytes) by (job)
+        labels:
+          severity: resource
+      
+      # Container CPU usage rate aggregated by job
+      - record: job:container_cpu_usage_seconds_total:sum_rate
+        expr: sum(rate(container_cpu_usage_seconds_total[5m])) by (job)
+        labels:
+          severity: resource
+
+  # Security Monitoring Metrics
+  - name: security_metrics
+    rules:
+      # Authentication failures rate
+      - record: job:auth_failures_total:rate5m
+        expr: sum(rate(auth_failures_total[5m])) by (job)
+        labels:
+          severity: security
+      
+      # WAF blocked requests rate
+      - record: job:waf_blocked_requests_total:rate5m
+        expr: sum(rate(waf_blocked_requests_total[5m])) by (job)
+        labels:
+          severity: security
+
+  # Database Performance Metrics
+  - name: database_metrics
+    rules:
+      # 95th percentile of database query duration
+      - record: job:db_query_duration_seconds:95percentile
+        expr: histogram_quantile(0.95, sum(rate(db_query_duration_seconds_bucket[5m])) by (le, job))
+        labels:
+          severity: database
+      
+      # Total active database connections
+      - record: job:db_connections:sum
+        expr: sum(db_connections) by (job)
+        labels:
+          severity: database
+
+  # Business Operation Metrics
+  - name: business_metrics
+    rules:
+      # Vessel calls rate per hour
+      - record: job:vessel_calls_total:rate1h
+        expr: sum(rate(vessel_calls_total[1h])) by (job)
+        labels:
+          severity: business
+      
+      # Cargo processing rate per hour
+      - record: job:cargo_processed_total:rate1h
+        expr: sum(rate(cargo_processed_total[1h])) by (job)
+        labels:
+          severity: business
+      
+      # 95th percentile of document processing duration
+      - record: job:document_processing_duration_seconds:95percentile
+        expr: histogram_quantile(0.95, sum(rate(document_processing_duration_seconds_bucket[5m])) by (le, job))
+        labels:
+          severity: business
