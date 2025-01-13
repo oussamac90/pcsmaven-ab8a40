@@ -1,0 +1,149 @@
+# Default values for API Gateway Helm chart
+# kubernetes v1.26 compatible
+# helm v3
+
+# Number of API Gateway replicas (3-10 for HA)
+replicaCount: 3
+
+# Container image configuration
+image:
+  repository: pcs/api-gateway
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+# Service configuration
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 3000
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+
+# Resource limits and requests as per container strategy
+resources:
+  limits:
+    cpu: "1"
+    memory: "2Gi"
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+
+# API Gateway configuration
+configMap:
+  data:
+    AUTH0_DOMAIN: "pcs.auth0.com"
+    AUTH0_AUDIENCE: "https://api.pcs.com"
+    API_KEY_HEADER: "X-API-Key"
+    API_KEY_EXPIRY_DAYS: "180"
+    REQUEST_TIMEOUT_MS: "5000"
+    MAX_REQUEST_SIZE: "10mb"
+    RATE_LIMIT_WINDOW_MS: "60000"
+    RATE_LIMIT_MAX_REQUESTS: "1000"
+    CORS_ALLOWED_ORIGINS: "https://*.pcs.com"
+    CORS_ALLOWED_METHODS: "GET,POST,PUT,DELETE,OPTIONS"
+
+# Environment variables
+env:
+  NODE_ENV: "production"
+  PORT: 3000
+  LOG_LEVEL: "info"
+  METRICS_ENABLED: "true"
+
+# Horizontal Pod Autoscaling configuration
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+# Container security context
+containerSecurityContext:
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+# Liveness probe configuration
+livenessProbe:
+  httpGet:
+    path: /health/live
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Readiness probe configuration
+readinessProbe:
+  httpGet:
+    path: /health/ready
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Network policies
+networkPolicy:
+  enabled: true
+  ingressRules:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+        - podSelector:
+            matchLabels:
+              app: ingress-nginx
+
+# Prometheus metrics
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: "15s"
+    scrapeTimeout: "10s"
+
+# Pod affinity/anti-affinity rules
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - api-gateway
+          topologyKey: kubernetes.io/hostname
+
+# Node selector
+nodeSelector:
+  role: application
+
+# Tolerations
+tolerations:
+  - key: "node-role"
+    operator: "Equal"
+    value: "application"
+    effect: "NoSchedule"
+
+# Service account
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/api-gateway-role"
