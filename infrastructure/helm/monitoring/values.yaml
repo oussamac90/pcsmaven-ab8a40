@@ -1,0 +1,184 @@
+# Port Community System Monitoring Stack Configuration
+# Version: 1.0.0
+
+nameOverride: "pcs-monitoring"
+fullnameOverride: "pcs-monitoring"
+
+# Prometheus Configuration
+prometheus:
+  enabled: true
+  server:
+    retention: "15d"
+    persistentVolume:
+      size: "50Gi"
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "512Mi"
+      limits:
+        cpu: "1000m"
+        memory: "1Gi"
+    global:
+      scrape_interval: "15s"
+      evaluation_interval: "15s"
+      scrape_timeout: "10s"
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 65534
+  alertmanager:
+    enabled: true
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "200m"
+        memory: "256Mi"
+  nodeExporter:
+    enabled: true
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "200m"
+        memory: "256Mi"
+  pushgateway:
+    enabled: false
+
+# Grafana Configuration
+grafana:
+  enabled: true
+  adminPassword: "admin"
+  persistence:
+    enabled: true
+    size: "10Gi"
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 472
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: default
+          folder: ""
+          type: file
+          disableDeletion: true
+          editable: false
+          options:
+            path: /var/lib/grafana/dashboards
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://prometheus-server
+          access: proxy
+          isDefault: true
+          jsonData:
+            timeInterval: "15s"
+        - name: Loki
+          type: loki
+          url: http://loki:3100
+          access: proxy
+        - name: Jaeger
+          type: jaeger
+          url: http://jaeger-query:16686
+          access: proxy
+
+# AlertManager Configuration
+alertmanager:
+  enabled: true
+  config:
+    global:
+      resolve_timeout: "5m"
+      smtp_smarthost: "smtp.example.com:587"
+      smtp_from: "alertmanager@pcs.com"
+    route:
+      group_by: ["alertname", "cluster", "service"]
+      group_wait: "30s"
+      group_interval: "5m"
+      repeat_interval: "12h"
+      receiver: "default-receiver"
+      routes:
+        - match:
+            severity: critical
+          receiver: "security-team"
+          group_wait: "0s"
+    receivers:
+      - name: "default-receiver"
+        email_configs:
+          - to: "pcs-team@example.com"
+            send_resolved: true
+      - name: "security-team"
+        email_configs:
+          - to: "security-team@example.com"
+            send_resolved: true
+  persistence:
+    enabled: true
+    size: "2Gi"
+
+# Loki Configuration
+loki:
+  enabled: true
+  persistence:
+    enabled: true
+    size: "10Gi"
+  config:
+    auth_enabled: false
+    ingester:
+      chunk_idle_period: "3m"
+      chunk_block_size: 262144
+      chunk_retain_period: "1m"
+      max_chunk_age: "2h"
+    limits_config:
+      retention_period: "744h"
+
+# Jaeger Configuration
+jaeger:
+  enabled: true
+  collector:
+    service:
+      type: ClusterIP
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "200m"
+        memory: "256Mi"
+  agent:
+    enabled: true
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "200m"
+        memory: "256Mi"
+  query:
+    enabled: true
+    service:
+      type: ClusterIP
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "200m"
+        memory: "256Mi"
+  storage:
+    type: elasticsearch
+    options:
+      es:
+        server-urls: http://elasticsearch:9200
+        num-shards: 5
+        num-replicas: 1
