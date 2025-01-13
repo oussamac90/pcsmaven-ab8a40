@@ -1,0 +1,152 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly scan
+  workflow_dispatch:  # Manual trigger
+
+env:
+  SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  TRIVY_NO_PROGRESS: true
+  TRIVY_EXIT_CODE: 1
+
+jobs:
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - path: src/backend/api-gateway
+            file: package.json
+            type: npm
+          - path: src/backend/core-service
+            file: pom.xml
+            type: maven
+          - path: src/backend/document-service
+            file: pyproject.toml
+            type: python
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Snyk
+        uses: snyk/actions/setup@v1.1.0
+
+      - name: Run Snyk Scan
+        working-directory: ${{ matrix.path }}
+        run: |
+          snyk test --file=${{ matrix.file }} \
+            --severity-threshold=high \
+            --all-projects \
+            --json > snyk-results.json || true
+          snyk monitor --file=${{ matrix.file }} \
+            --all-projects \
+            --org=pcs-org
+
+      - name: Upload Snyk Results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: ${{ matrix.path }}/snyk-results.json
+          category: dependency-scan
+
+  sast-scan:
+    name: Static Application Security Testing
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        language: ['javascript', 'java', 'python']
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v2
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          category: sast-scan
+
+  container-scan:
+    name: Container Image Scan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: ['api-gateway', 'core-service', 'document-service']
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build Container Image
+        run: |
+          docker build -t pcs/${{ matrix.service }}:scan \
+            -f src/backend/${{ matrix.service }}/Dockerfile \
+            src/backend/${{ matrix.service }}
+
+      - name: Run Trivy Scan
+        uses: aquasecurity/trivy-action@0.8.0
+        with:
+          image-ref: pcs/${{ matrix.service }}:scan
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          vuln-type: 'os,library'
+          ignore-unfixed: true
+
+      - name: Upload Trivy Results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: trivy-results.sarif
+          category: container-scan
+
+  security-report:
+    name: Generate Security Report
+    needs: [dependency-scan, sast-scan, container-scan]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Download Scan Results
+        uses: actions/download-artifact@v3
+        with:
+          path: scan-results
+
+      - name: Generate Consolidated Report
+        run: |
+          echo "# Security Scan Report" > security-report.md
+          echo "## Scan Summary" >> security-report.md
+          echo "- Dependency Scan: ${{ needs.dependency-scan.result }}" >> security-report.md
+          echo "- SAST Scan: ${{ needs.sast-scan.result }}" >> security-report.md
+          echo "- Container Scan: ${{ needs.container-scan.result }}" >> security-report.md
+          
+          if [[ -d "scan-results" ]]; then
+            echo "## Detailed Findings" >> security-report.md
+            for file in scan-results/**/*.sarif; do
+              echo "### $(basename ${file%.*})" >> security-report.md
+              jq -r '.runs[].results[] | "- " + .message.text' "$file" >> security-report.md 2>/dev/null || true
+            done
+          fi
+
+      - name: Upload Security Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-report
+          path: security-report.md
+
+      - name: Check Scan Status
+        if: ${{ needs.dependency-scan.result == 'failure' || needs.sast-scan.result == 'failure' || needs.container-scan.result == 'failure' }}
+        run: |
+          echo "Critical security issues found in scans"
+          exit 1
