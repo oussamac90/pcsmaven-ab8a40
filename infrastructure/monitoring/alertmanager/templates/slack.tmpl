@@ -1,0 +1,91 @@
+{{ /* AlertManager Slack Notification Template v0.25.0 */ }}
+
+{{/* Title Template - Enhanced visibility with status, severity and alert count */}}
+{{ define "slack.title" }}
+{{- range .Alerts -}}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Labels.severity | toUpper }}{{ end }}] {{ .Labels.alertname }}{{ if .Labels.environment }} ({{ .Labels.environment }}){{ end }}{{ if gt (len .Alerts) 1 }} ({{ len .Alerts }}){{ end }}
+{{- end }}
+{{ end }}
+
+{{/* Message Body Template - Comprehensive incident details and response guidance */}}
+{{ define "slack.text" }}
+{{- range .Alerts }}
+*Alert:* {{ .Labels.alertname }}
+*Description:* {{ .Annotations.description }}
+*Severity:* {{ .Labels.severity }}
+*Started:* {{ .StartsAt | since }}
+{{- if .Annotations.value }}
+*Value:* {{ .Annotations.value }}
+{{- end }}
+{{- if .Labels.instance }}
+*Instance:* {{ .Labels.instance }}
+{{- end }}
+{{- if .Labels.team }}
+*Team:* {{ .Labels.team }}
+{{- end }}
+{{- if .Labels.service }}
+*Service:* {{ .Labels.service }}
+{{- end }}
+{{- if .Labels.cluster }}
+*Cluster:* {{ .Labels.cluster }}
+{{- end }}
+{{- if .Labels.namespace }}
+*Namespace:* {{ .Labels.namespace }}
+{{- end }}
+{{- if .Labels.pod }}
+*Pod:* {{ .Labels.pod }}
+{{- end }}
+{{- if .Annotations.runbook }}
+*Runbook:* {{ .Annotations.runbook }}
+{{- end }}
+{{- if .Annotations.dashboard }}
+*Dashboard:* {{ .Annotations.dashboard }}
+{{- end }}
+{{- if .Annotations.resolution }}
+
+*Resolution Steps:*
+{{ .Annotations.resolution }}
+{{- end }}
+{{- if .Annotations.additional_info }}
+
+*Additional Information:*
+{{ .Annotations.additional_info }}
+{{- end }}
+
+{{- if eq .Status "resolved" }}
+✅ *Alert Resolved*
+Resolution Time: {{ .EndsAt | since }}
+{{- end }}
+---
+{{- end }}
+
+{{- if gt (len .Alerts) 1 }}
+Total Alerts: {{ len .Alerts }}
+{{- end }}
+{{ end }}
+
+{{/* Color Template - Severity-based message coloring */}}
+{{ define "slack.color" }}
+{{- if eq .Status "resolved" -}}
+good
+{{- else -}}
+{{- if eq .Labels.severity "critical" -}}
+danger
+{{- else if eq .Labels.severity "warning" -}}
+warning
+{{- else -}}
+#439FE0
+{{- end -}}
+{{- end -}}
+{{ end }}
+
+{{/* Priority Template - Severity-based message priority */}}
+{{ define "slack.priority" }}
+{{- if eq .Labels.severity "critical" -}}
+high
+{{- else if eq .Labels.severity "warning" -}}
+medium
+{{- else -}}
+low
+{{- end -}}
+{{ end }}
