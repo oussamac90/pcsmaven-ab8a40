@@ -1,0 +1,63 @@
+# Kubernetes Ingress resource for Port Community System web application
+# Version: networking.k8s.io/v1 (K8s 1.26)
+# Dependencies:
+# - ingress-nginx v4.7.1
+# - cert-manager v1.12.0
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pcs-web-ingress
+  namespace: pcs
+  labels:
+    app: pcs-web
+    environment: production
+  annotations:
+    # Ingress Controller Configuration
+    kubernetes.io/ingress.class: "nginx"
+    
+    # TLS/Certificate Management
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    
+    # Load Balancing and Performance Optimization
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+    
+    # Security Controls
+    nginx.ingress.kubernetes.io/enable-modsecurity: "true"
+    nginx.ingress.kubernetes.io/enable-owasp-core-rules: "true"
+    nginx.ingress.kubernetes.io/limit-rps: "10"
+    
+    # Timeouts and Connection Settings
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "5"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "30"
+    
+    # Session Affinity
+    nginx.ingress.kubernetes.io/session-cookie-name: "pcs_session"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "86400"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "86400"
+    
+    # Monitoring
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "10254"
+
+spec:
+  # TLS Configuration
+  tls:
+  - hosts:
+    - pcs.production
+    secretName: pcs-web-tls
+  
+  # Routing Rules
+  rules:
+  - host: pcs.production
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: pcs-web-service
+            port:
+              number: 80
