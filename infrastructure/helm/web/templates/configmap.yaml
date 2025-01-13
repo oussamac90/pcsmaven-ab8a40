@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "web.fullname" . }}-config
+  labels:
+    {{- include "web.labels" . | nindent 4 }}
+    security.pcs.io/monitored: "true"
+    performance.pcs.io/tracked: "true"
+  annotations:
+    checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-5"
+
+data:
+  # Core environment settings
+  NODE_ENV: {{ .Values.env.NODE_ENV | quote }}
+  
+  # API and Socket Configuration
+  REACT_APP_API_URL: {{ .Values.env.API_URL | quote }}
+  REACT_APP_SOCKET_URL: {{ .Values.env.SOCKET_URL | quote }}
+  
+  # Performance Configuration
+  REACT_APP_API_TIMEOUT: {{ .Values.env.RESPONSE_TIMEOUT | default "2000" | quote }}
+  REACT_APP_MAX_CONCURRENT_USERS: {{ .Values.env.MAX_CONCURRENT_USERS | default "1000" | quote }}
+  REACT_APP_RESPONSE_TIMEOUT: {{ .Values.env.RESPONSE_TIMEOUT | default "2000" | quote }}
+  REACT_APP_API_RETRY_ATTEMPTS: "3"
+  
+  # Security Configuration
+  REACT_APP_AUTH_DOMAIN: {{ .Values.env.AUTH_DOMAIN | default "auth.pcs.example.com" | quote }}
+  REACT_APP_SECURITY_HEADERS: |
+    {
+      "X-Frame-Options": "DENY",
+      "X-Content-Type-Options": "nosniff",
+      "X-XSS-Protection": "1; mode=block",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' {{ .Values.env.API_URL }} {{ .Values.env.SOCKET_URL }}"
+    }
+  
+  # CORS Configuration
+  REACT_APP_CORS_ORIGINS: {{ .Values.env.CORS_ORIGINS | default "*" | quote }}
+  
+  # Rate Limiting
+  REACT_APP_RATE_LIMIT_REQUESTS: "100"
+  REACT_APP_RATE_LIMIT_INTERVAL: "60000"
+  
+  # Logging Configuration
+  REACT_APP_LOG_LEVEL: {{ .Values.env.LOG_LEVEL | default "info" | quote }}
+  
+  # Feature Flags
+  REACT_APP_FEATURES: |
+    {
+      "vesselTracking": true,
+      "documentManagement": true,
+      "cargoTracking": true,
+      "billing": true,
+      "notifications": true
+    }
+  
+  # Error Handling
+  REACT_APP_ERROR_CONFIG: |
+    {
+      "retryableErrors": ["network", "timeout"],
+      "maxRetries": 3,
+      "retryDelay": 1000,
+      "fallbackLanguage": "en"
+    }
+  
+  # Monitoring Configuration
+  REACT_APP_MONITORING: |
+    {
+      "errorTracking": true,
+      "performanceMonitoring": true,
+      "userActivityTracking": true,
+      "errorSamplingRate": 1.0,
+      "performanceSamplingRate": 0.1
+    }
