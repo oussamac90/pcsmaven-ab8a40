@@ -1,0 +1,77 @@
+[tool.poetry]
+name = "document-service"
+version = "1.0.0"
+description = "Secure document processing service for Port Community System supporting EDIFACT message exchange with ISO 27001 and GDPR compliance"
+authors = ["PCS Team"]
+python = "^3.9"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi = "^0.95.0"                                    # High-performance web framework
+uvicorn = "^0.21.0"                                   # ASGI server implementation
+pydantic = "^1.10.0"                                  # Data validation using Python type annotations
+motor = "^3.1.0"                                      # Async MongoDB driver
+python-multipart = "^0.0.6"                           # Multipart form data parsing
+prometheus-fastapi-instrumentator = "^5.9.0"          # Prometheus metrics for FastAPI
+opentelemetry-api = "^1.15.0"                         # OpenTelemetry API
+opentelemetry-sdk = "^1.15.0"                         # OpenTelemetry SDK
+opentelemetry-instrumentation-fastapi = "^0.36.0"     # FastAPI instrumentation
+python-jose = {extras = ["cryptography"], version = "^3.3.0"} # JWT token handling
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}   # Password hashing
+pyyaml = "^6.0.0"                                     # YAML configuration parsing
+aiofiles = "^23.1.0"                                  # Async file operations
+edifact = "^1.0.0"                                    # EDIFACT message parsing
+cryptography = "^40.0.0"                              # Cryptographic operations
+python-json-logger = "^2.0.7"                         # JSON format logging
+asyncio-throttle = "^1.0.2"                           # Rate limiting
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.3.0"                                     # Testing framework
+pytest-asyncio = "^0.21.0"                            # Async test support
+pytest-cov = "^4.0.0"                                 # Test coverage reporting
+black = "^23.3.0"                                     # Code formatting
+isort = "^5.12.0"                                     # Import sorting
+mypy = "^1.2.0"                                       # Static type checking
+flake8 = "^6.0.0"                                     # Code linting
+bandit = "^1.7.5"                                     # Security linting
+safety = "^2.3.5"                                     # Dependency security checking
+
+[tool.poetry.scripts]
+start = "uvicorn src.app:app --host 0.0.0.0 --port 8000 --reload"
+test = "pytest"
+lint = "flake8 src tests"
+format = "black src tests"
+security-check = "bandit -r src/ && safety check"
+type-check = "mypy src/"
+
+[build-system]
+requires = ["poetry-core>=1.5.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ["py39"]
+include = "src/**/*.py"
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+include_trailing_comma = true
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_unimported = true
+
+[tool.pytest]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = "--cov=src --cov-report=term-missing --cov-report=xml"
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101"]
+level = "HIGH"
