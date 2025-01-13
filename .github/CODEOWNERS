@@ -1,0 +1,32 @@
+# Unless a later match takes precedence, these owners will be requested for review
+* @port-community-system/maintainers
+
+# API Gateway service ownership with security team oversight
+src/backend/api-gateway/** @port-community-system/backend @port-community-system/api-team @port-community-system/security
+
+# Core service ownership with security team oversight
+src/backend/core-service/** @port-community-system/backend @port-community-system/core-team @port-community-system/security
+
+# Document service ownership with security team oversight
+src/backend/document-service/** @port-community-system/backend @port-community-system/document-team @port-community-system/security
+
+# Notification service ownership
+src/backend/notification-service/** @port-community-system/backend @port-community-system/notification-team
+
+# Frontend application ownership with security review
+src/web/** @port-community-system/frontend @port-community-system/security
+
+# Infrastructure and deployment configuration ownership
+infrastructure/** @port-community-system/devops @port-community-system/security
+
+# CI/CD workflow configuration ownership with security review
+.github/workflows/** @port-community-system/devops @port-community-system/security
+
+# Security configuration ownership with mandatory security team review
+infrastructure/security/** @port-community-system/security @port-community-system/devops
+
+# Monitoring configuration ownership with security oversight
+infrastructure/monitoring/** @port-community-system/sre @port-community-system/devops @port-community-system/security
+
+# Database configuration ownership with security review
+infrastructure/database/** @port-community-system/dba @port-community-system/security
