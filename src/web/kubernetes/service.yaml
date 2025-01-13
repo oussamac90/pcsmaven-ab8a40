@@ -1,0 +1,58 @@
+# Kubernetes Service API v1.26
+# Istio Service Mesh v1.18
+# Prometheus Monitoring v0.68
+apiVersion: v1
+kind: Service
+metadata:
+  name: pcs-web-service
+  namespace: pcs
+  labels:
+    app: pcs-web
+    environment: production
+    version: v1
+    part-of: pcs
+    managed-by: kubectl
+  annotations:
+    # Prometheus monitoring configuration
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "80"
+    prometheus.io/path: "/metrics"
+    
+    # Istio service mesh configuration
+    service.istio.io/canonical-name: "pcs-web"
+    service.istio.io/canonical-revision: "v1"
+    security.istio.io/tlsMode: "strict"
+    networking.istio.io/exportTo: "."
+    sidecar.istio.io/inject: "true"
+
+spec:
+  # Internal cluster IP service type for security
+  type: ClusterIP
+  
+  # Port configuration for HTTP traffic
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP
+      appProtocol: http
+
+  # Pod selector matching deployment labels
+  selector:
+    app: pcs-web
+    version: v1
+
+  # Session affinity disabled for better load distribution
+  sessionAffinity: None
+
+  # Topology aware routing configuration
+  topologyKeys:
+    - "kubernetes.io/hostname"
+    - "topology.kubernetes.io/zone"
+    - "topology.kubernetes.io/region"
+    - "*"
+
+  # Production-ready settings
+  publishNotReadyAddresses: false
+  internalTrafficPolicy: Cluster
+  ipFamilyPolicy: PreferDualStack
