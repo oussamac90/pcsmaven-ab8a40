@@ -1,0 +1,170 @@
+# Port Community System RBAC Role Bindings
+# Version: v1
+# Purpose: Defines secure role bindings with enhanced security controls and ISO 27001 compliance
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: port-authority-binding
+  labels:
+    app.kubernetes.io/part-of: pcs
+    app.kubernetes.io/component: rbac
+    security-tier: critical
+    access-type: administrative
+    rotation-schedule: quarterly
+    iso27001-compliant: "true"
+  annotations:
+    rbac.pcs.io/last-modified: "2024-01-01T00:00:00Z"
+    rbac.pcs.io/audit-trail: "enabled"
+    rbac.pcs.io/valid-until: "2024-12-31T23:59:59Z"
+    rbac.pcs.io/access-review: "quarterly"
+    rbac.pcs.io/compliance: "iso27001"
+subjects:
+- kind: Group
+  name: port-authority
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: port-authority-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: terminal-operator-binding
+  labels:
+    app.kubernetes.io/part-of: pcs
+    app.kubernetes.io/component: rbac
+    security-tier: high
+    access-type: operational
+    rotation-schedule: quarterly
+  annotations:
+    rbac.pcs.io/last-modified: "2024-01-01T00:00:00Z"
+    rbac.pcs.io/audit-trail: "enabled"
+    rbac.pcs.io/valid-until: "2024-12-31T23:59:59Z"
+    rbac.pcs.io/access-review: "quarterly"
+subjects:
+- kind: Group
+  name: terminal-operators
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: terminal-operator-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: shipping-line-binding
+  labels:
+    app.kubernetes.io/part-of: pcs
+    app.kubernetes.io/component: rbac
+    security-tier: standard
+    access-type: user
+    rotation-schedule: quarterly
+  annotations:
+    rbac.pcs.io/last-modified: "2024-01-01T00:00:00Z"
+    rbac.pcs.io/audit-trail: "enabled"
+    rbac.pcs.io/valid-until: "2024-12-31T23:59:59Z"
+subjects:
+- kind: Group
+  name: shipping-lines
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: shipping-line-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: customs-binding
+  labels:
+    app.kubernetes.io/part-of: pcs
+    app.kubernetes.io/component: rbac
+    security-tier: high
+    access-type: regulatory
+    rotation-schedule: quarterly
+  annotations:
+    rbac.pcs.io/last-modified: "2024-01-01T00:00:00Z"
+    rbac.pcs.io/audit-trail: "enabled"
+    rbac.pcs.io/valid-until: "2024-12-31T23:59:59Z"
+subjects:
+- kind: Group
+  name: customs-authority
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: customs-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: finance-binding
+  labels:
+    app.kubernetes.io/part-of: pcs
+    app.kubernetes.io/component: rbac
+    security-tier: high
+    access-type: financial
+    rotation-schedule: quarterly
+  annotations:
+    rbac.pcs.io/last-modified: "2024-01-01T00:00:00Z"
+    rbac.pcs.io/audit-trail: "enabled"
+    rbac.pcs.io/valid-until: "2024-12-31T23:59:59Z"
+subjects:
+- kind: Group
+  name: finance-team
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: finance-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: api-gateway-binding
+  namespace: pcs
+  labels:
+    app.kubernetes.io/part-of: pcs
+    app.kubernetes.io/component: rbac
+    security-tier: critical
+    access-type: service
+  annotations:
+    rbac.pcs.io/last-modified: "2024-01-01T00:00:00Z"
+    rbac.pcs.io/audit-trail: "enabled"
+    rbac.pcs.io/service-account: "true"
+subjects:
+- kind: ServiceAccount
+  name: api-gateway-sa
+  namespace: pcs
+roleRef:
+  kind: ClusterRole
+  name: api-gateway-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: system-admin-binding
+  labels:
+    app.kubernetes.io/part-of: pcs
+    app.kubernetes.io/component: rbac
+    security-tier: critical
+    access-type: administrative
+    rotation-schedule: monthly
+  annotations:
+    rbac.pcs.io/last-modified: "2024-01-01T00:00:00Z"
+    rbac.pcs.io/audit-trail: "enabled"
+    rbac.pcs.io/valid-until: "2024-12-31T23:59:59Z"
+    rbac.pcs.io/access-review: "monthly"
+    rbac.pcs.io/requires-mfa: "true"
+subjects:
+- kind: Group
+  name: system-administrators
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: system-admin-role
+  apiGroup: rbac.authorization.k8s.io
