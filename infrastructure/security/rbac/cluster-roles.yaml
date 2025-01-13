@@ -1,0 +1,119 @@
+# Kubernetes RBAC API version v1 for ClusterRole resources
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: port-authority-role
+  labels:
+    app.kubernetes.io/part-of: pcs
+    app.kubernetes.io/component: rbac
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+description: "Role for port authority users with comprehensive vessel and berth management capabilities"
+rules:
+- apiGroups: ["pcs.core"]
+  resources: ["vessels", "berths", "schedules", "operations"]
+  verbs: ["*"]
+- apiGroups: ["pcs.documents"]
+  resources: ["manifests", "declarations", "certificates"]
+  verbs: ["get", "list", "watch", "create", "update"]
+- apiGroups: ["pcs.audit"]
+  resources: ["logs", "events"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: terminal-operator-role
+  labels:
+    app.kubernetes.io/part-of: pcs
+    app.kubernetes.io/component: rbac
+description: "Role for terminal operators with yard and equipment management access"
+rules:
+- apiGroups: ["pcs.core"]
+  resources: ["containers", "cargo", "yard", "equipment"]
+  verbs: ["*"]
+- apiGroups: ["pcs.operations"]
+  resources: ["gates", "movements", "inspections"]
+  verbs: ["*"]
+- apiGroups: ["pcs.audit"]
+  resources: ["operationLogs"]
+  verbs: ["create", "get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: shipping-line-role
+  labels:
+    app.kubernetes.io/part-of: pcs
+    app.kubernetes.io/component: rbac
+description: "Role for shipping lines with vessel tracking and document management"
+rules:
+- apiGroups: ["pcs.core"]
+  resources: ["vessels", "schedules", "bookings"]
+  verbs: ["get", "list", "watch", "create"]
+- apiGroups: ["pcs.documents"]
+  resources: ["manifests", "bills", "declarations"]
+  verbs: ["create", "get", "list", "watch", "update"]
+- apiGroups: ["pcs.tracking"]
+  resources: ["containerStatus", "cargoLocation"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: customs-role
+  labels:
+    app.kubernetes.io/part-of: pcs
+    app.kubernetes.io/component: rbac
+description: "Role for customs authorities with declaration and inspection capabilities"
+rules:
+- apiGroups: ["pcs.documents"]
+  resources: ["declarations", "manifests", "certificates"]
+  verbs: ["*"]
+- apiGroups: ["pcs.core"]
+  resources: ["cargo", "containers", "inspections"]
+  verbs: ["get", "list", "watch", "update"]
+- apiGroups: ["pcs.audit"]
+  resources: ["customsLogs", "inspectionReports"]
+  verbs: ["create", "get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: finance-role
+  labels:
+    app.kubernetes.io/part-of: pcs
+    app.kubernetes.io/component: rbac
+description: "Role for finance department with billing and payment management"
+rules:
+- apiGroups: ["pcs.finance"]
+  resources: ["invoices", "payments", "tariffs", "reports"]
+  verbs: ["*"]
+- apiGroups: ["pcs.core"]
+  resources: ["services", "operations"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["pcs.audit"]
+  resources: ["financialLogs", "transactionHistory"]
+  verbs: ["create", "get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: system-admin-role
+  labels:
+    app.kubernetes.io/part-of: pcs
+    app.kubernetes.io/component: rbac
+    rbac.authorization.k8s.io/aggregate-to-cluster-admin: "true"
+description: "Role for system administrators with full system access and security management"
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["policy"]
+  resources: ["podsecuritypolicies"]
+  verbs: ["use", "create", "update", "delete"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+  verbs: ["*"]
+- apiGroups: ["pcs.audit"]
+  resources: ["systemLogs", "securityEvents", "accessLogs"]
+  verbs: ["*"]
