@@ -1,0 +1,153 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "core-service.fullname" . }}-config
+  labels:
+    {{- include "core-service.labels" . | nindent 4 }}
+data:
+  application.yml: |
+    spring:
+      application:
+        name: {{ .Release.Name }}
+      
+      # Database configuration
+      datasource:
+        url: {{ .Values.env.database.url }}
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+        hikari:
+          maximum-pool-size: {{ .Values.env.database.pool.maxSize | default 20 }}
+          minimum-idle: {{ .Values.env.database.pool.minIdle | default 5 }}
+          connection-timeout: 30000
+          idle-timeout: 600000
+          max-lifetime: 1800000
+      
+      # JPA/Hibernate configuration
+      jpa:
+        hibernate:
+          ddl-auto: none
+        properties:
+          hibernate:
+            jdbc.batch_size: 50
+            query.plan_cache_max_size: 2048
+            generate_statistics: false
+            order_inserts: true
+            order_updates: true
+            connection.provider_disables_autocommit: false
+      
+      # Redis cache configuration
+      redis:
+        host: {{ .Values.env.redis.host }}
+        port: {{ .Values.env.redis.port | default 6379 }}
+        timeout: 2000
+        lettuce:
+          pool:
+            max-active: 8
+            max-idle: 8
+            min-idle: 2
+      
+      # Security configuration
+      security:
+        oauth2:
+          resourceserver:
+            jwt:
+              issuer-uri: {{ .Values.env.security.oauth.issuerUri }}
+      
+      # Circuit breaker configuration
+      cloud:
+        circuitbreaker:
+          resilience4j:
+            enabled: true
+            instances:
+              default:
+                slidingWindowSize: 100
+                minimumNumberOfCalls: 10
+                waitDurationInOpenState: 60s
+    
+    # Server configuration
+    server:
+      port: 8080
+      shutdown: graceful
+      tomcat:
+        threads:
+          max: {{ .Values.env.server.maxThreads | default 200 }}
+          min-spare: {{ .Values.env.server.minSpareThreads | default 20 }}
+        connection-timeout: 5000
+        max-connections: 8192
+        accept-count: 100
+        max-swallow-size: 2MB
+        max-http-form-post-size: 2MB
+    
+    # Actuator/Metrics configuration
+    management:
+      endpoints:
+        web:
+          base-path: /actuator
+          exposure:
+            include: health,metrics,prometheus,info
+      endpoint:
+        health:
+          show-details: when_authorized
+          probes:
+            enabled: true
+      metrics:
+        tags:
+          application: {{ .Release.Name }}
+        distribution:
+          percentiles-histogram:
+            http.server.requests: true
+      health:
+        livenessState:
+          enabled: true
+        readinessState:
+          enabled: true
+        db:
+          enabled: true
+        redis:
+          enabled: true
+
+  logging.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <configuration>
+      <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+          <pattern>%d{ISO8601} [%thread] [%X{traceId},%X{spanId}] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+      </appender>
+
+      <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/var/log/core-service.log</file>
+        <encoder>
+          <pattern>%d{ISO8601} [%thread] [%X{traceId},%X{spanId}] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+          <fileNamePattern>/var/log/core-service-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+          <maxFileSize>100MB</maxFileSize>
+          <maxHistory>30</maxHistory>
+          <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+      </appender>
+
+      <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <appender-ref ref="FILE"/>
+      </appender>
+
+      <root level="{{ .Values.env.logging.rootLevel | default "INFO" }}">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ASYNC"/>
+      </root>
+
+      <!-- Application logging -->
+      <logger name="com.pcs.core" level="{{ .Values.env.logging.appLevel | default "INFO" }}"/>
+      
+      <!-- SQL logging -->
+      <logger name="org.hibernate.SQL" level="{{ .Values.env.logging.sqlLevel | default "INFO" }}"/>
+      
+      <!-- Performance logging -->
+      <logger name="org.hibernate.stat" level="INFO"/>
+      <logger name="com.zaxxer.hikari" level="INFO"/>
+      
+      <!-- Security logging -->
+      <logger name="org.springframework.security" level="INFO"/>
