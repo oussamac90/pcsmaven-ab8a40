@@ -1,0 +1,192 @@
+# Default values for core-service Helm chart
+# This is a YAML-formatted file.
+
+# Number of replicas for the core service deployment
+replicaCount: 3
+
+# Container image configuration
+image:
+  repository: pcs/core-service
+  tag: 1.0.0
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Pod Disruption Budget configuration for high availability
+podDisruptionBudget:
+  enabled: true
+  minAvailable: "75%"
+
+# Service account configuration
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/core-service-role
+  name: ""
+
+# Pod annotations for monitoring and backup
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/actuator/prometheus"
+  backup.velero.io/backup-volumes: "data"
+  co.elastic.logs/enabled: "true"
+
+# Security context for pods
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 2000
+  fsGroup: 2000
+  runAsNonRoot: true
+
+# Security context for containers
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8080
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: "2"
+    memory: 4Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+# Horizontal Pod Autoscaling configuration
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+
+# Topology spread constraints for high availability
+topologySpreadConstraints:
+- maxSkew: 1
+  topologyKey: topology.kubernetes.io/zone
+  whenUnsatisfiable: DoNotSchedule
+  labelSelector:
+    matchLabels:
+      app.kubernetes.io/name: core-service
+
+# Pod affinity rules
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: core-service
+        topologyKey: kubernetes.io/hostname
+
+# Environment variables
+env:
+  SPRING_PROFILES_ACTIVE: production
+  JAVA_OPTS: "-Xms1g -Xmx3g -XX:+UseG1GC -XX:+HeapDumpOnOutOfMemoryError"
+  ELASTIC_APM_SERVICE_NAME: core-service
+  ELASTIC_APM_ENABLED: "true"
+  SPRING_CLOUD_CIRCUIT_BREAKER_ENABLED: "true"
+
+# Persistence configuration
+persistence:
+  enabled: true
+  storageClass: gp3
+  size: 10Gi
+  accessMode: ReadWriteOnce
+  backup:
+    enabled: true
+    schedule: "0 1 * * *"
+
+# Metrics configuration
+metrics:
+  serviceMonitor:
+    enabled: true
+    interval: "15s"
+    scrapeTimeout: "10s"
+  prometheusRule:
+    enabled: true
+    rules:
+    - alert: HighResponseTime
+      expr: http_server_requests_seconds_max > 2
+      for: 5m
+      labels:
+        severity: warning
+
+# Redis configuration
+redis:
+  enabled: true
+  architecture: replication
+  auth:
+    enabled: true
+    existingSecret: redis-credentials
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+  replica:
+    replicaCount: 2
+    persistence:
+      enabled: true
+      size: 8Gi
+
+# Network policy configuration
+networkPolicy:
+  enabled: true
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+
+# Istio configuration
+istio:
+  enabled: true
+  mtls:
+    mode: STRICT
+
+# Liveness probe configuration
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8080
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Readiness probe configuration
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 2
+  failureThreshold: 3
+
+# Startup probe configuration
+startupProbe:
+  httpGet:
+    path: /actuator/health
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  failureThreshold: 30
