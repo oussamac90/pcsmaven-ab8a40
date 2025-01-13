@@ -1,0 +1,43 @@
+apiVersion: v2
+name: document-service
+description: Document processing service for handling EDIFACT messages (IFTSTA, IFTMBC, COARRI) and port documentation with support for message validation, storage, and caching
+type: application
+version: 1.0.0
+appVersion: 1.0.0
+
+# Kubernetes version compatibility
+kubeVersion: ">=1.26.0-0"
+
+# Chart keywords for search and categorization
+keywords:
+  - document-service
+  - edifact
+  - port-documents
+  - maritime
+  - iftsta
+  - iftmbc
+  - coarri
+  - message-processing
+
+# Chart maintainers
+maintainers:
+  - name: PCS Team
+    email: support@pcs.com
+
+# Chart annotations
+annotations:
+  category: Infrastructure
+  resourceLimits: "cpu: 1, memory: 2Gi"
+  scalingPolicy: "HPA 2-6 pods"
+  kubernetesCompatibility: ">=1.26.0"
+
+# Chart dependencies
+dependencies:
+  - name: mongodb
+    version: "12.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: mongodb.enabled
+  - name: redis
+    version: "17.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
