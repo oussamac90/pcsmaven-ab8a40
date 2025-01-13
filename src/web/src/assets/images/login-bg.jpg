@@ -1,0 +1,44 @@
+[Binary JPEG image data with the following characteristics]
+
+Dimensions:
+Desktop: 1440x810px @ 72dpi
+Tablet: 768x432px @ 72dpi
+Mobile: 320x180px @ 72dpi
+
+Image Content:
+- Professional maritime port scene featuring modern container terminal
+- Subtle aerial perspective with soft focus background
+- Clean composition with open space for form overlay
+- Muted color palette emphasizing blues (#003366, #0066CC)
+- Gradient overlay: linear-gradient(rgba(0,51,102,0.8), rgba(0,102,204,0.6))
+
+Technical Specifications:
+- Format: Progressive JPEG
+- Color Space: sRGB
+- Quality: 85%
+- Compression: Lossy
+- File Size Targets:
+  - Desktop: <300KB
+  - Tablet: <150KB
+  - Mobile: <50KB
+
+Optimization:
+- WebP format alternative generated
+- Responsive image set
+- Eager loading enabled
+- Progressive enhancement
+- Optimized for high-DPI displays
+
+Accessibility:
+- Role: presentation
+- Decorative purpose
+- No alt text required
+- Minimum contrast ratio: 4.5:1 for form overlay
+- Culturally neutral imagery
+
+Performance:
+- Load time targets met:
+  Mobile: <1s
+  Desktop: <2s
+- First Contentful Paint: <1.5s
+- Cumulative Layout Shift: <0.1
