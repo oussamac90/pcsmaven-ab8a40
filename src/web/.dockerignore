@@ -1,0 +1,54 @@
+node_modules
+dist
+.cache
+.build
+coverage
+tests
+
+# Version control
+.git
+
+# IDE and editor files
+.vscode
+.idea
+
+# Kubernetes configs
+kubernetes
+
+# Log files
+*.log
+
+# Source maps
+*.map
+
+# Environment files (except production)
+.env.local
+.env.development
+.env.test
+!.env.production
+
+# Test files
+*.test.tsx
+*.test.ts
+
+# Config files (except Vite config)
+*.config.js
+!vite.config.js
+
+# Linting and formatting
+.eslintrc*
+.prettierrc*
+
+# Docker files
+.dockerignore
+
+# Documentation
+*.md
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
