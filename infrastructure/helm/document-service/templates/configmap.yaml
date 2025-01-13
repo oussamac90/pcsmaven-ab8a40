@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "document-service.fullname" . }}-config
+  labels:
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    app.kubernetes.io/name: {{ include "document-service.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/component: document-service
+    app.kubernetes.io/part-of: pcs
+data:
+  # Application Configuration
+  APP_NAME: "pcs-document-service"
+  APP_VERSION: {{ .Chart.AppVersion | quote }}
+  ENV: {{ .Values.env | default "production" | quote }}
+  LOG_LEVEL: {{ .Values.logLevel | default "INFO" | quote }}
+  LOG_FORMAT: "json"
+  
+  # Security Configuration
+  ENABLE_AUDIT_LOGGING: {{ .Values.auditLogging.enabled | default "true" | quote }}
+  ENABLE_ENCRYPTION: {{ .Values.security.encryption.enabled | default "true" | quote }}
+  ENABLE_TLS: {{ .Values.security.tls.enabled | default "true" | quote }}
+  
+  # API Configuration
+  API_RATE_LIMIT: {{ .Values.api.rateLimit | default "100" | quote }}
+  API_RATE_LIMIT_PERIOD: {{ .Values.api.rateLimitPeriod | default "60" | quote }}
+  API_TIMEOUT: {{ .Values.api.timeout | default "30" | quote }}
+  
+  # Document Processing Configuration
+  MAX_DOCUMENT_SIZE_MB: {{ .Values.document.maxSizeMB | default "10" | quote }}
+  PROCESSING_TIMEOUT_SECONDS: {{ .Values.document.processingTimeout | default "300" | quote }}
+  PROCESSING_MAX_RETRIES: {{ .Values.document.maxRetries | default "3" | quote }}
+  ALLOWED_DOCUMENT_TYPES: {{ .Values.document.allowedTypes | default "CARGO_MANIFEST,CUSTOMS_DECLARATION,BILL_OF_LADING" | quote }}
+  
+  # EDIFACT Configuration
+  ENABLE_EDIFACT_VALIDATION: {{ .Values.edifact.validation.enabled | default "true" | quote }}
+  EDIFACT_STRICT_MODE: {{ .Values.edifact.validation.strictMode | default "true" | quote }}
+  ALLOWED_EDIFACT_TYPES: {{ .Values.edifact.messageTypes | join "," | quote }}
+  EDIFACT_PROCESSING_TIMEOUT: {{ .Values.edifact.processing.timeoutSeconds | default "30" | quote }}
+  EDIFACT_MAX_RETRIES: {{ .Values.edifact.processing.maxRetries | default "3" | quote }}
+  
+  # Database Configuration
+  MONGODB_URI: {{ required "MongoDB URI is required" .Values.mongodb.uri | quote }}
+  MONGODB_MAX_POOL_SIZE: {{ .Values.mongodb.maxPoolSize | default "100" | quote }}
+  MONGODB_MIN_POOL_SIZE: {{ .Values.mongodb.minPoolSize | default "10" | quote }}
+  MONGODB_CONNECT_TIMEOUT_MS: {{ .Values.mongodb.connectTimeoutMs | default "30000" | quote }}
+  MONGODB_SOCKET_TIMEOUT_MS: {{ .Values.mongodb.socketTimeoutMs | default "45000" | quote }}
+  
+  # Cache Configuration
+  REDIS_URI: {{ required "Redis URI is required" .Values.redis.uri | quote }}
+  REDIS_MAX_CONNECTIONS: {{ .Values.redis.maxConnections | default "50" | quote }}
+  REDIS_CONNECT_TIMEOUT: {{ .Values.redis.connectTimeout | default "10000" | quote }}
+  REDIS_KEY_PREFIX: {{ .Values.redis.keyPrefix | default "doc-service:" | quote }}
+  
+  # Message Queue Configuration
+  RABBITMQ_URI: {{ required "RabbitMQ URI is required" .Values.rabbitmq.uri | quote }}
+  RABBITMQ_QUEUE_PREFIX: {{ .Values.rabbitmq.queuePrefix | default "doc-service." | quote }}
+  RABBITMQ_MAX_RETRIES: {{ .Values.rabbitmq.maxRetries | default "3" | quote }}
+  
+  # Performance Tuning
+  WORKER_THREADS: {{ .Values.performance.workerThreads | default "4" | quote }}
+  BATCH_SIZE: {{ .Values.performance.batchSize | default "100" | quote }}
+  CACHE_TTL_SECONDS: {{ .Values.performance.cacheTTL | default "3600" | quote }}
+  
+  # Monitoring Configuration
+  ENABLE_METRICS: {{ .Values.monitoring.enabled | default "true" | quote }}
+  METRICS_PORT: {{ .Values.monitoring.port | default "8080" | quote }}
+  METRICS_PATH: {{ .Values.monitoring.path | default "/metrics" | quote }}
