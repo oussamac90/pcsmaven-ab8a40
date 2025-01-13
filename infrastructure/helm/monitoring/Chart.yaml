@@ -1,0 +1,63 @@
+apiVersion: v2
+name: pcs-monitoring
+version: 1.0.0
+description: Port Community System monitoring stack with Prometheus, Grafana, AlertManager, Loki and Jaeger
+type: application
+appVersion: 1.0.0
+kubeVersion: ">=1.26.0"
+
+# Chart dependencies
+dependencies:
+  - name: prometheus
+    version: 15.0.0
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: prometheus.enabled
+
+  - name: grafana
+    version: 6.50.0
+    repository: https://grafana.github.io/helm-charts
+    condition: grafana.enabled
+
+  - name: alertmanager
+    version: 0.24.0
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: alertmanager.enabled
+
+  - name: loki
+    version: 3.0.0
+    repository: https://grafana.github.io/helm-charts
+    condition: loki.enabled
+
+  - name: jaeger
+    version: 2.40.0
+    repository: https://jaegertracing.github.io/helm-charts
+    condition: jaeger.enabled
+
+# Chart metadata
+maintainers:
+  - name: PCS Team
+    email: pcs-team@example.com
+
+keywords:
+  - monitoring
+  - prometheus
+  - grafana
+  - alertmanager
+  - loki
+  - jaeger
+  - observability
+
+annotations:
+  category: Monitoring
+  licenses: Apache-2.0
+  support: https://github.com/pcs/monitoring
+
+# Home URL and documentation
+home: https://github.com/pcs/monitoring
+icon: https://raw.githubusercontent.com/pcs/monitoring/master/icon.png
+sources:
+  - https://github.com/pcs/monitoring
+
+# Additional chart information
+deprecated: false
+tillerVersion: ">=2.16.0"
