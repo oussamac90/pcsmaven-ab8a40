@@ -1,0 +1,110 @@
+# External dependency versions:
+# ingress-nginx: 4.7.1
+# cert-manager: 1.12.0
+
+ingress-nginx:
+  controller:
+    # High availability configuration
+    replicaCount: 3
+    minAvailable: 2
+    
+    # Resource allocation
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+    
+    # Prometheus metrics integration
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+        additionalLabels:
+          release: prometheus
+        scrapeInterval: 30s
+    
+    # NGINX configuration with enhanced security
+    config:
+      use-forwarded-headers: "true"
+      proxy-buffer-size: "16k"
+      proxy-body-size: "50m"
+      
+      # ModSecurity WAF configuration
+      enable-modsecurity: "true"
+      enable-owasp-core-rules: "true"
+      
+      # Rate limiting
+      limit-rps: "10"
+      
+      # TLS security configuration
+      ssl-protocols: "TLSv1.2 TLSv1.3"
+      ssl-ciphers: "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384"
+      http2: "true"
+      
+      # Connection tuning
+      keep-alive: "75"
+      keep-alive-requests: "100"
+      client-header-timeout: "60"
+      client-body-timeout: "60"
+    
+    # Prometheus scraping annotations
+    podAnnotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "10254"
+    
+    # Pod anti-affinity for high availability
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+    
+  # Load balancer configuration
+  service:
+    type: LoadBalancer
+    externalTrafficPolicy: Local
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: nlb
+      service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+      service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "60"
+      service.beta.kubernetes.io/aws-load-balancer-ssl-cert: arn:aws:acm:region:account:certificate/certificate-id
+      service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
+
+# TLS configuration with Let's Encrypt
+tls:
+  enabled: true
+  clusterIssuer: letsencrypt-prod
+  secretName: pcs-tls-secret
+  hosts:
+    - pcs.example.com
+  renewBefore: 720h
+  privateKeySecretRef:
+    name: pcs-tls-key
+
+# Ingress rules configuration
+rules:
+  - host: pcs.example.com
+    paths:
+      # API Gateway path configuration
+      - path: /api
+        pathType: Prefix
+        service:
+          name: api-gateway
+          port: 80
+        backend:
+          timeoutSeconds: 30
+          maxReplicas: 5
+          targetCPUUtilizationPercentage: 80
+      
+      # Web application path configuration
+      - path: /
+        pathType: Prefix
+        service:
+          name: web
+          port: 80
+        backend:
+          timeoutSeconds: 30
+          maxReplicas: 5
+          targetCPUUtilizationPercentage: 80
