@@ -1,0 +1,165 @@
+# Prometheus Configuration v2.42.0
+# Port Community System Monitoring
+
+global:
+  # Global settings for all scrape targets
+  scrape_interval: 15s     # How frequently to scrape targets
+  evaluation_interval: 15s  # How frequently to evaluate rules
+  scrape_timeout: 10s      # Timeout for scrape requests
+  
+  # External labels for identifying this Prometheus instance
+  external_labels:
+    environment: production
+    region: primary
+    cluster: pcs-cluster
+    application: port-community-system
+
+# Rule files containing alerting and recording rules
+rule_files:
+  - "rules/alerts.yaml"    # Alert definitions
+  - "rules/recording.yaml" # Recording rules for metrics
+
+# Scrape configurations
+scrape_configs:
+  # Kubernetes Pod Monitoring
+  - job_name: 'kubernetes-pods'
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
+
+  # Kubernetes Service Monitoring
+  - job_name: 'kubernetes-services'
+    kubernetes_sd_configs:
+      - role: service
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_service_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_service_name]
+        action: replace
+        target_label: kubernetes_service_name
+
+  # Kubernetes Node Monitoring
+  - job_name: 'kubernetes-nodes'
+    kubernetes_sd_configs:
+      - role: node
+    relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        regex: (.+)
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/${1}/proxy/metrics
+
+  # API Gateway Monitoring
+  - job_name: 'api-gateway'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['api-gateway:8080']
+    metric_relabel_configs:
+      - source_labels: [http_request_duration_seconds]
+        action: keep
+        regex: .*;.*
+
+  # Security Monitoring
+  - job_name: 'waf-metrics'
+    static_configs:
+      - targets: ['waf-exporter:9100']
+    metric_relabel_configs:
+      - source_labels: [waf_blocked_requests_total]
+        action: keep
+
+  # Database Monitoring
+  - job_name: 'database-metrics'
+    static_configs:
+      - targets: ['db-exporter:9187']
+    metric_relabel_configs:
+      - source_labels: [pg_stat_activity_count]
+        action: keep
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - kubernetes_sd_configs:
+        - role: pod
+      relabel_configs:
+        - source_labels: [__meta_kubernetes_namespace]
+          regex: monitoring
+          action: keep
+        - source_labels: [__meta_kubernetes_pod_label_app]
+          regex: alertmanager
+          action: keep
+        - source_labels: [__meta_kubernetes_pod_container_port_number]
+          regex: "9093"
+          action: keep
+
+# Storage configuration
+storage:
+  tsdb:
+    # 15 days retention for metrics
+    retention_time: 15d
+    # Maximum storage size
+    retention_size: 50GB
+    # Enable WAL compression
+    wal_compression: true
+    # Out of order time window
+    out_of_order_time_window: 10m
+
+# Remote write configuration for long-term storage
+remote_write:
+  - url: "http://thanos-receive:19291/api/v1/receive"
+    queue_config:
+      capacity: 500
+      max_shards: 1000
+      max_samples_per_send: 100
+      batch_send_deadline: 5s
+    retry_on_http_429: true
+
+# Remote read configuration for querying long-term storage
+remote_read:
+  - url: "http://thanos-query:10902/api/v1/read"
+    read_recent: true
+    required_matchers:
+      env: production
+
+# Query performance tuning
+query:
+  max_samples: 50000000
+  timeout: 2m
+  max_concurrency: 20
