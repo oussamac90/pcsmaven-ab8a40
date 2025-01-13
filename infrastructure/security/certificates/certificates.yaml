@@ -1,0 +1,100 @@
+# cert-manager.io/v1 - Certificate management for Port Community System
+# Manages TLS certificates for secure service communication
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: api-gateway-cert
+  namespace: pcs-system
+  labels:
+    app.kubernetes.io/name: api-gateway
+    app.kubernetes.io/part-of: pcs
+    cert-manager.io/certificate-name: api-gateway-cert
+  annotations:
+    cert-manager.io/issue-temporary-certificate: "true"
+    cert-manager.io/common-name: api.portcommunitysystem.com
+spec:
+  secretName: api-gateway-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+    group: cert-manager.io
+  dnsNames:
+    - api.portcommunitysystem.com
+  duration: 8760h # 1 year
+  renewBefore: 720h # 30 days
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+    rotationPolicy: Always
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: web-cert
+  namespace: pcs-system
+  labels:
+    app.kubernetes.io/name: web-application
+    app.kubernetes.io/part-of: pcs
+    cert-manager.io/certificate-name: web-cert
+  annotations:
+    cert-manager.io/issue-temporary-certificate: "true"
+    cert-manager.io/common-name: portcommunitysystem.com
+spec:
+  secretName: web-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+    group: cert-manager.io
+  dnsNames:
+    - portcommunitysystem.com
+    - www.portcommunitysystem.com
+  duration: 8760h # 1 year
+  renewBefore: 720h # 30 days
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+    rotationPolicy: Always
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: document-service-cert
+  namespace: pcs-system
+  labels:
+    app.kubernetes.io/name: document-service
+    app.kubernetes.io/part-of: pcs
+    cert-manager.io/certificate-name: document-service-cert
+  annotations:
+    cert-manager.io/issue-temporary-certificate: "true"
+    cert-manager.io/common-name: docs.portcommunitysystem.com
+spec:
+  secretName: document-service-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+    group: cert-manager.io
+  dnsNames:
+    - docs.portcommunitysystem.com
+  duration: 8760h # 1 year
+  renewBefore: 720h # 30 days
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+    rotationPolicy: Always
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
