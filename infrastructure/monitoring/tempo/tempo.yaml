@@ -1,0 +1,90 @@
+# Tempo Configuration v2.1.1
+# Provides distributed tracing backend for the Port Community System
+# Integrated with Jaeger and OpenTelemetry for comprehensive trace collection
+
+apiVersion: tempo.grafana.com/v1alpha1
+kind: Tempo
+metadata:
+  name: pcs-tempo
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: pcs-monitoring
+    app.kubernetes.io/component: tracing-backend
+spec:
+  # High availability configuration with multiple replicas
+  replicas:
+    distributor: 2      # Handles trace ingestion load balancing
+    ingester: 3         # Ensures reliable trace data storage
+    querier: 2          # Supports concurrent trace queries
+    query_frontend: 2   # Optimizes query distribution
+    compactor: 1        # Manages trace data compaction
+
+  # S3 storage backend configuration for trace data persistence
+  storage:
+    trace:
+      backend: s3
+      s3:
+        bucket: pcs-tempo-traces
+        endpoint: s3.amazonaws.com
+        region: us-east-1
+      blocklist_poll: 5m
+      cache:
+        enabled: true
+        backend: redis  # Redis cache for improved query performance
+
+  # Retention configuration for trace data
+  retention:
+    global:
+      traces: 7d  # 7-day retention period for all traces
+
+  # Receiver configurations for different trace collection protocols
+  receivers:
+    jaeger:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:14250
+        thrift_http:
+          endpoint: 0.0.0.0:14268
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+  # Ingestion configuration for high throughput
+  ingestion:
+    rate_limit: 100000  # Handles 100k spans per second
+    burst_size: 20000   # Allows for traffic spikes
+    max_block_bytes: 1073741824  # 1GB max block size
+    block_retention: 2h  # Temporary block retention
+
+  # Compaction settings for efficient storage
+  compaction:
+    block_retention: 7d
+    compaction_interval: 30m
+    compacted_block_retention: 1h
+
+  # Resource allocation for key components
+  resources:
+    distributor:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 500m
+        memory: 512Mi
+    ingester:
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+      requests:
+        cpu: 1000m
+        memory: 1Gi
+    querier:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 500m
+        memory: 512Mi
