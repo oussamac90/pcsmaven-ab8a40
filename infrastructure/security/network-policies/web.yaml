@@ -1,0 +1,88 @@
+# Kubernetes NetworkPolicy v1.26
+# Purpose: Zero-trust network security policy for web application pods
+# Compliance: ISO 27001 network segmentation requirements
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: web-network-policy
+  namespace: pcs
+  labels:
+    app: pcs
+    component: web
+    security-tier: frontend
+  annotations:
+    description: "Zero-trust network policy for web application pods"
+    compliance: "iso27001"
+    last-reviewed: "2023-11-01"
+    security.pcs.io/controls: "network-segmentation,dmz-isolation,zero-trust"
+    security.pcs.io/reviewed-by: "security-team"
+    security.pcs.io/expires: "2024-11-01"
+
+spec:
+  # Target web application pods using precise label selectors
+  podSelector:
+    matchLabels:
+      app: pcs-web
+      component: frontend
+      security-tier: dmz
+
+  # Enable both ingress and egress policy enforcement
+  policyTypes:
+    - Ingress
+    - Egress
+
+  # Ingress rules for incoming traffic control
+  ingress:
+    # Allow external HTTP traffic with private network restrictions
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            # Block private network ranges for security
+            except:
+              - 10.0.0.0/8     # Private network
+              - 172.16.0.0/12  # Private network
+              - 192.168.0.0/16 # Private network
+      ports:
+        - protocol: TCP
+          port: 80
+
+    # Allow Prometheus metrics scraping from monitoring namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+              type: system
+          podSelector:
+            matchLabels:
+              app: prometheus
+              component: metrics
+      ports:
+        - protocol: TCP
+          port: 80
+
+  # Egress rules for outbound traffic control
+  egress:
+    # Allow communication to API Gateway pods only
+    - to:
+        - podSelector:
+            matchLabels:
+              app: pcs
+              component: api-gateway
+              security-tier: internal
+      ports:
+        - protocol: TCP
+          port: 3000
+
+    # Allow DNS resolution to kube-dns service
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+              type: system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+              component: dns
+      ports:
+        - protocol: UDP
+          port: 53
